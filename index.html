@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="30秒方針">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%230f172a'/%3E%3Crect x='20' y='20' width='152' height='152' rx='28' fill='none' stroke='%2338bdf8' stroke-width='6'/%3E%3Ctext x='96' y='96' text-anchor='middle' dominant-baseline='central' fill='%23ffffff' font-family='sans-serif' font-weight='bold' font-size='64'%3E30s%3C/text%3E%3Ctext x='96' y='142' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif' font-weight='bold' font-size='20'%3ESTRATEGY%3C/text%3E%3C/svg%3E">
+    <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>30秒方針チェック・記述採点トレーナー</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; padding-bottom: 5.5rem; }
+    .timer-bar { transition: width 0.1s linear; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+  <div class="max-w-3xl mx-auto px-4 py-5 sm:py-8">
+    <!-- Header -->
+    <header class="mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span class="inline-block text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded bg-slate-900 text-white mb-1">スマホ完結PWA・SRS忘却曲線</span>
+          <h1 class="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">30秒方針チェック・記述採点トレーナー</h1>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm text-right">
+          <div class="text-[10px] text-slate-500">卒業済（SRS完了）</div>
+          <div class="text-sm sm:text-base font-bold text-emerald-700 tabular-nums"><span id="gradCount">0</span> / <span id="totalProbCount">16</span></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap"></div>
+
+    <!-- VIEW 1: TRAINER -->
+    <div id="viewTrainer">
+      <!-- Quick Gap-Time Mode + Subject Filters -->
+      <div class="mb-4 bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs font-bold text-slate-500 mr-0.5">即出し:</span>
+            <button type="button" data-quick="1" class="quick-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200 transition">5分(1問)</button>
+            <button type="button" data-quick="2" class="quick-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200 transition">10分(2問)</button>
+            <button type="button" data-quick="3" class="quick-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200 transition">15分(3問)</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="timerMode" class="text-xs font-medium border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-slate-900">
+              <option value="60">制限60秒</option>
+              <option value="30">制限30秒</option>
+              <option value="0">制限なし</option>
+            </select>
+            <button id="btnCopyLog" type="button" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition">ログコピー</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100" id="subjectFilters">
+          <button type="button" data-subj="ALL" class="subj-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900 text-white">全科目</button>
+          <button type="button" data-subj="化学" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">化学</button>
+          <button type="button" data-subj="数学" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">数学</button>
+          <button type="button" data-subj="物理" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">物理</button>
+          <button type="button" data-subj="地理" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">地理</button>
+          <button type="button" data-subj="国語" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">国語</button>
+          <button type="button" data-subj="英語" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">英語</button>
+        </div>
+      </div>
+
+      <!-- Main Problem Card -->
+      <main id="trainerCard" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="h-1.5 bg-slate-100 w-full">
+          <div id="timerBar" class="timer-bar h-full bg-slate-900 w-full"></div>
+        </div>
+
+        <div class="p-4 sm:p-6">
+          <!-- Meta -->
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span id="pId" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-900 text-white"></span>
+              <span id="pSubj" class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700"></span>
+              <span id="pSrs" class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-900"></span>
+            </div>
+            <div class="flex items-center gap-3 text-xs font-semibold">
+              <span id="timerText" class="text-slate-700 tabular-nums">60.0s</span>
+              <span id="pProgress" class="text-slate-500 tabular-nums">1 / 16</span>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-500 mb-1.5" id="pSource"></div>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 mb-4">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-indigo-700 mb-1">設問条件（公式・解法非表示）</div>
+            <p id="pPrompt" class="text-sm sm:text-base font-bold text-slate-900 leading-relaxed"></p>
+          </div>
+
+          <!-- Strategy Input Form -->
+          <div id="inputArea" class="space-y-3 mb-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700">方針を記述（キーワード中心でOK）</span>
+              <button id="btnToggleMode" type="button" class="text-xs font-medium text-indigo-700 hover:underline">1欄フリー記述へ切替</button>
+            </div>
+
+            <div id="structuredInputs" class="space-y-2.5">
+              <div>
+                <label for="inLaw" class="block text-xs font-semibold text-slate-600 mb-1">① 使う法則・公式・着眼点</label>
+                <input id="inLaw" type="text" placeholder="例：全気体仮定P_仮と飽和蒸気圧P0の比較..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900">
+              </div>
+              <div>
+                <label for="inStep" class="block text-xs font-semibold text-slate-600 mb-1">② 立式・解法の順序</label>
+                <textarea id="inStep" rows="2" placeholder="例：仮想圧を状態方程式で計算→P0より大きければ凝縮..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900"></textarea>
+              </div>
+              <div>
+                <label for="inTrap" class="block text-xs font-semibold text-slate-600 mb-1">③ 注意すべき罠（符号・定義域・軸・例外条件）</label>
+                <input id="inTrap" type="text" placeholder="例：同点ケースの除外、横軸と縦軸の取り違え..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900">
+              </div>
+            </div>
+
+            <div id="freeInput" class="hidden">
+              <textarea id="inFree" rows="4" placeholder="使う法則・立式の順序・注意すべき罠をまとめて書いてください..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900"></textarea>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <button id="btnSkip" type="button" class="text-xs font-medium text-slate-500 hover:text-slate-800 py-2">スキップ</button>
+              <button id="btnGrade" type="button" class="px-5 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 active:scale-[0.99] transition shadow-sm">方針を採点する</button>
+            </div>
+          </div>
+
+          <!-- Grading Result Panel -->
+          <div id="resultPanel" class="hidden border-t border-slate-200 pt-4 mt-4 space-y-4">
+            <div id="verdictBanner" class="rounded-xl p-3.5 border flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div id="verdictTitle" class="text-sm sm:text-base font-bold"></div>
+                <div id="verdictNextSrs" class="text-xs font-medium mt-0.5"></div>
+              </div>
+              <div class="text-right">
+                <div class="text-[11px] font-semibold opacity-75">採点スコア</div>
+                <div id="verdictScore" class="text-xl sm:text-2xl font-bold tabular-nums"></div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-xs font-bold text-slate-700 mb-2">採点ルーブリック（表現違いで書けた項目はタップで○/×補正可）</h3>
+              <div id="rubricList" class="space-y-2"></div>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+              <div>
+                <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-0.5">模範方針・立式</div>
+                <p id="modelAnswer" class="text-xs sm:text-sm text-slate-900 leading-relaxed font-medium"></p>
+              </div>
+              <div class="pt-2 border-t border-slate-200">
+                <div class="text-[11px] font-bold uppercase tracking-wide text-indigo-700 mb-0.5">If-Then 条件反射ルール</div>
+                <p id="modelIfThen" class="text-xs sm:text-sm text-slate-900 font-bold leading-snug"></p>
+              </div>
+            </div>
+
+            <button id="btnConfirmNext" type="button" class="w-full py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 active:scale-[0.99] transition">判定を確定して次へ →</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Session Complete Card -->
+      <section id="completeCard" class="hidden bg-white border border-slate-200 rounded-2xl p-5 sm:p-8 shadow-sm">
+        <div class="text-center mb-5">
+          <span class="inline-block px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold mb-2">セット完了</span>
+          <h2 class="text-xl font-bold text-slate-900">今回の採点結果：<span id="summaryPass"></span></h2>
+          <p class="text-xs text-slate-600 mt-1">スマホ内にSRS記録を保存しました。シートにも反映したい場合はログをコピーしてください。</p>
+        </div>
+        <div id="sessionLogList" class="space-y-2 mb-5 text-xs sm:text-sm"></div>
+        <div class="flex flex-wrap justify-center gap-3">
+          <button id="btnCopySummary" type="button" class="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition">シート同期用ログをコピー</button>
+          <button id="btnNewSet" type="button" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition">別のセットを開始</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 2: MANAGE / ADD PROBLEMS ON PHONE -->
+    <section id="viewManage" class="hidden space-y-4">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+        <h2 class="text-sm sm:text-base font-bold text-slate-900 mb-1">スマホから新しい弱点問題を追加</h2>
+        <p class="text-xs text-slate-500 mb-3">追加した問題はこのスマホのブラウザに保存され、そのまま30秒方針チェックに出題されます。</p>
+        <div class="space-y-2.5">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label for="addSubj" class="block text-xs font-semibold text-slate-600 mb-1">科目</label>
+              <select id="addSubj" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl bg-white">
+                <option value="化学">化学</option>
+                <option value="数学">数学</option>
+                <option value="物理">物理</option>
+                <option value="地理">地理</option>
+                <option value="国語">国語</option>
+                <option value="英語">英語</option>
+              </select>
+            </div>
+            <div>
+              <label for="addSrc" class="block text-xs font-semibold text-slate-600 mb-1">教材・番号</label>
+              <input id="addSrc" type="text" placeholder="例：重問 p.55 準98" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl">
+            </div>
+          </div>
+          <div>
+            <label for="addPrompt" class="block text-xs font-semibold text-slate-600 mb-1">設問条件（公式・解法は伏せる）</label>
+            <textarea id="addPrompt" rows="2" placeholder="例：高温で生成物Cが減少するとき、正反応の熱化学と平衡定数Kの変化を判定する手順を述べよ。" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl"></textarea>
+          </div>
+          <div>
+            <label for="addKeywords" class="block text-xs font-semibold text-slate-600 mb-1">採点キーワード（カンマ区切り・3〜6個）</label>
+            <input id="addKeywords" type="text" placeholder="例：ルシャトリエ, 吸熱, 発熱, 逆反応, 小さく" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl">
+          </div>
+          <div>
+            <label for="addModel" class="block text-xs font-semibold text-slate-600 mb-1">模範方針（採点後に表示）</label>
+            <textarea id="addModel" rows="2" placeholder="例：高温で逆反応が進行＝逆反応が吸熱→正反応は発熱。Kは小さくなる。" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl"></textarea>
+          </div>
+          <div>
+            <label for="addIfThen" class="block text-xs font-semibold text-slate-600 mb-1">If-Thenルール（任意）</label>
+            <input id="addIfThen" type="text" placeholder="例：【If】温度上昇でC減少を見たら → 【Then】逆反応＝吸熱と書いてから正反応を決める" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl">
+          </div>
+          <button id="btnAddProblem" type="button" class="w-full py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition">この問題を追加する</button>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h3 class="text-sm font-bold text-slate-900">登録済み問題一覧（<span id="manageCount">16</span>問）</h3>
+          <div class="flex gap-2">
+            <button id="btnExportJson" type="button" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100">バックアップコピー</button>
+          </div>
+        </div>
+        <div id="manageList" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: PWA INSTALL GUIDE -->
+    <section id="viewInstall" class="hidden space-y-4">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        <h2 class="text-base font-bold text-slate-900">スマホのホーム画面に追加してアプリ化する方法</h2>
+        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 text-xs sm:text-sm text-indigo-950 leading-relaxed">
+          <div class="font-bold mb-1">ステップ1：無料URLで公開する（所要1分・初回のみ）</div>
+          iPhone（Safari）はローカルファイルのままだとホーム画面に追加できないため、配布した <span class="font-mono font-bold">strategy_trainer_pwa.zip</span> を <strong>Netlify Drop</strong>（app.netlify.com/drop）または <strong>GitHub Pages</strong> にアップロードして自分の専用URL（https://〜）を発行します。
+        </div>
+        <div class="space-y-3 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="font-bold text-slate-900 mb-1">ステップ2（iPhone / Safari）</div>
+            <ol class="list-decimal list-inside space-y-1">
+              <li>発行した自分の専用URLを <strong>Safari</strong> で開く</li>
+              <li>画面下部の <strong>共有ボタン（□に↑）</strong> をタップ</li>
+              <li><strong>「ホーム画面に追加」</strong> → 右上の「追加」をタップ</li>
+            </ol>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="font-bold text-slate-900 mb-1">ステップ2（Android / Chrome）</div>
+            <ol class="list-decimal list-inside space-y-1">
+              <li>発行した自分の専用URLを <strong>Chrome</strong> で開く</li>
+              <li>右上の <strong>︙（メニュー）</strong> をタップ</li>
+              <li><strong>「ホーム画面に追加」</strong> または <strong>「アプリをインストール」</strong> をタップ</li>
+            </ol>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500">※一度ホーム画面に追加して開けば、オフライン環境（通学中・地下鉄等）でも動作し、追加した問題やSRS学習履歴はすべてスマホ内に保存されます。</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Bottom Fixed Mobile Navigation Bar -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 z-40">
+    <div class="max-w-3xl mx-auto grid grid-cols-3">
+      <button id="navTrainer" type="button" class="py-3 flex flex-col items-center justify-center text-xs font-bold text-slate-900 border-t-2 border-slate-900">
+        <span>30秒演習</span>
+      </button>
+      <button id="navManage" type="button" class="py-3 flex flex-col items-center justify-center text-xs font-medium text-slate-500 border-t-2 border-transparent hover:text-slate-800">
+        <span>問題追加・管理</span>
+      </button>
+      <button id="navInstall" type="button" class="py-3 flex flex-col items-center justify-center text-xs font-medium text-slate-500 border-t-2 border-transparent hover:text-slate-800">
+        <span>ホーム画面追加</span>
+      </button>
+    </div>
+  </nav>
+
+  <script>
+    const DEFAULT_PROBLEMS = [
+      {
+        id: 'CT-WEAK-CHEM-011',
+        subj: '化学',
+        src: '共通テスト対策 化学演習 第6問 問3・4（気液平衡）',
+        prompt: '3.6L容器にエタノール0.10molを入れ87℃から30℃へ冷却したときの圧力決定手順、および凝縮が始まる温度(℃)を蒸気圧表から求める手順を述べよ。',
+        rubric: [
+          { label: 'すべて気体と仮定した仮想圧 P_仮 を計算する', weight: 35, keywords: ['仮想', 'すべて気体', '全気体', 'pv=nrt', '状態方程式', 'p仮', 'p_仮', '仮定'] },
+          { label: '仮想圧と飽和蒸気圧 P0 を比較し、P_仮 > P0 なら凝縮し圧力 = P0 と確定する', weight: 35, keywords: ['飽和蒸気圧', 'p0', '比較', '大小', '凝縮', '超え', '大きい'] },
+          { label: '凝縮開始温度は「仮想圧直線 P = kT」と「蒸気圧曲線」の交点（表の大小逆転区間）から求める', weight: 30, keywords: ['交点', '直線', '曲線', '逆転', '70', '80', '比例', '温度'] }
+        ],
+        model: '①まず30℃ですべて気体と仮定した圧力P_仮(=7.0×10^4 Pa)を算出し、30℃の飽和蒸気圧P0(=1.1×10^4 Pa)と比較する。②P_仮 > P0なので凝縮が起こり、圧力は飽和蒸気圧1.1×10^4 Paに確定する。③凝縮開始温度は仮想圧直線P=8.3×10^4×(273+t)/360と蒸気圧曲線の交点（70℃でP_仮>P0、80℃でP_仮<P0の間）から求める。',
+        ifThen: '【If】蒸気圧・ピストン・冷却の問題を見たら → 【Then】まず「すべて気体と仮定したP_仮 vs 飽和蒸気圧P0」の大小比較を1行書く'
+      },
+      {
+        id: 'CT-WEAK-CHEM-001',
+        subj: '化学',
+        src: '共通テスト形式 化学 第2問 問5b [13]（ヨウ素滴定）',
+        prompt: 'KIO3(式量214)1.07gと過剰のKIを酸性下で反応させて1Lとした溶液40.0mLでSn2+をSn4+へ滴定した。合金中のSnの物質量を求める際のIO3-とI2のモル比と立式手順を述べよ。',
+        rubric: [
+          { label: 'IO3- と I- の酸化還元反応から IO3- : I2 = 1 : 3 を導く（I- 側由来の I2 を含める）', weight: 45, keywords: ['1:3', '3倍', '3mol', '3', 'io3', 'i-', '酸化還元', '電子'] },
+          { label: 'KIO3の物質量(1.07/214)からI2濃度を出し、40.0/1000を掛けて滴定に用いたI2物質量を求める', weight: 30, keywords: ['40', '1000', '214', '濃度', '1l', 'モル', '掛け'] },
+          { label: 'Sn2+ → Sn4+ + 2e- と I2 + 2e- → 2I- より n(Sn) = n(I2)（1:1）と立式する', weight: 25, keywords: ['sn', '1:1', '等しい', '2e', '電子'] }
+        ],
+        model: '2IO3- + 10I- + 12H+ → 6I2 + 6H2O より、IO3- 1molからI2は「3mol」生じる（I-側から生じるI2を見落とさない）。n(I2)濃度 = 3×(1.07/214) = 1.50×10^-2 mol/L。40mL中のI2物質量 = 6.00×10^-4 mol = n(Sn)。',
+        ifThen: '【If】IO3- と KI の酸性下ヨウ素遊離反応を見たら → 【Then】「IO3- 1mol → I2 3mol（I-側も合算）」を即座に確認する'
+      },
+      {
+        id: 'CT-WEAK-CHEM-002',
+        subj: '化学',
+        src: '共通テスト形式 化学 第4問 問3・4（鉛蓄電池・メタネーション）',
+        prompt: '鉛蓄電池の放電で負極が48g増加したときの電解液質量変化の符号と値、および CO2 + 4H2 → CH4 + 2H2O(液) で CH4 1molを得る必要電気量（電子数）の決定手順を述べよ。',
+        rubric: [
+          { label: '鉛蓄電池は e- 2molあたり負極 +96g・電解液 -160g（H2SO4 2mol減・H2O 2mol増）を使う', weight: 40, keywords: ['96', '160', '2mol', 'h2so4', '硫酸', '負極', '減'] },
+          { label: '負極 +48g（e- 1mol）なので電解液は「減少（マイナス）」で -80g とする', weight: 30, keywords: ['-80', '80', 'マイナス', '減少', '1mol', '半分'] },
+          { label: 'CH4 1molには H2 4mol → e- 8mol が必要（Q = 8F）と電子数を正確に数える', weight: 30, keywords: ['8mol', '8f', '8', '4mol', '電子', 'ファラデー'] }
+        ],
+        model: '鉛蓄電池はe- 2molあたり負極(Pb→PbSO4)+96g、電解液(2H2SO4消費+2H2O生成)-160g。+48gはe- 1mol分なので電解液は-80g。メタネーションはH2 4mol生成にe- 8mol必要なので電気量は8×9.65×10^4 C。',
+        ifThen: '【If】鉛蓄電池の質量変化が出たら → 【Then】「e- 2mol基準：負極+96g／正極+64g／液-160g」の3点セットを余白に書く'
+      },
+      {
+        id: 'CT-WEAK-CHEM-006',
+        subj: '化学',
+        src: '第2回 全統共テ模試 化学 第2問 問4b・c（2室ピストン気液平衡）',
+        prompt: '飽和蒸気圧8.0×10^4 Paの2-プロパノール(A室)と4.0×10^4 Paの水(B室)を仕切り板で分け、圧力6.0×10^4 Paにしたときの各室の状態と、P対(VA+VB)グラフの曲線の凸の向きを述べよ。',
+        rubric: [
+          { label: 'A室は外圧6.0 < 飽和蒸気圧8.0なので「気体のみ」と判定する', weight: 35, keywords: ['a室', '気体のみ', '気体', '未満', '小さい', '8.0'] },
+          { label: 'B室は外圧6.0 > 飽和蒸気圧4.0なので「すべて凝縮し液体のみ」と判定する', weight: 35, keywords: ['b室', '液体のみ', '液体', '凝縮', '大きい', '超え', '4.0'] },
+          { label: '気体のみの区間はボイルの法則 P=nRT/V（反比例）なので「下に凸」の曲線、凝縮区間は水平線となる', weight: 30, keywords: ['下に凸', '反比例', 'ボイル', '水平', '一定'] }
+        ],
+        model: '圧力6.0×10^4 Paは2-プロパノール(8.0)未満なのでA室は気体のみ、水(4.0)超なのでB室は全量凝縮し液体のみ。気体のみの区間はP=nRT/Vの反比例グラフ（下に凸）、各物質の気液共存区間は圧力一定の水平線になる。',
+        ifThen: '【If】気液平衡のP-Vグラフを見たら → 【Then】「気体のみ＝反比例（下に凸）」「気液共存＝水平線」の2ルールで即切る'
+      },
+      {
+        id: 'CT-WEAK-CHEM-007',
+        subj: '化学',
+        src: '第2回 全統共テ模試 化学 第3問 問2・4b（空気電池・平衡移動）',
+        prompt: 'マグネシウム空気電池(2Mg+O2+2H2O→2Mg(OH)2)で全体質量が1.6g増加したときの流れた電気量、および CO+H2O(気)⇔CO2+H2 で圧力を2倍にしたときの体積比の求め方を述べよ。',
+        rubric: [
+          { label: '質量増加1.6g＝吸収したO2の質量（1.6/32 = 0.050mol）と捉える', weight: 35, keywords: ['o2', '酸素', '32', '0.05', '吸収', '増加'] },
+          { label: 'O2 + 2H2O + 4e- → 4OH- より電子はO2の「4倍」(0.20mol)として Q = 0.20F を計算する', weight: 35, keywords: ['4倍', '4e', '0.2', '4', 'ファラデー'] },
+          { label: 'CO+H2O⇔CO2+H2 は両辺2molで分子数変化なし→圧力2倍でも平衡移動せず体積は1/2倍', weight: 30, keywords: ['分子数', '変化なし', '移動しない', '2mol', '0.5', '1/2', '半分'] }
+        ],
+        model: '質量増加1.6gは取り込んだO2(0.050mol)分。O2 1molあたりe- 4molなので0.050×4=0.20molの電子が流れ、Q=0.20×9.65×10^4 C。また両辺の気体分子数が2mol=2molで等しいため、加圧しても平衡移動せずボイルの法則通りV2=0.50V1。',
+        ifThen: '【If】空気電池の質量増加を見たら → 【Then】「増加分＝吸収O2」「e-＝O2の4倍」を必ず式に書く'
+      },
+      {
+        id: 'ERR-096',
+        subj: '数学',
+        src: '共テ直前演習 第1回 数学ⅠA 第3問(2)(3)（図形の性質・五心）',
+        prompt: '鈍角三角形での外心O・重心G・垂心Hの内外位置を述べよ。また ∠B=∠C, ∠A<60°, AH=6, BC=8 で(1)の誘導 OM:AH=1:2 があるとき、OGと比AE:ECの求め方を述べよ。',
+        rubric: [
+          { label: '鈍角三角形では外心Oと垂心Hが外部（重心Gは常に内部）にある', weight: 35, keywords: ['o', 'h', '外心', '垂心', '外部', '重心', '内部'] },
+          { label: '(1)の誘導 OM:AH=1:2 から OM=3 を出し、三平方で OA=OB=5 → OH・OG（オイラー線 OG:GH=1:2）へ繋ぐ', weight: 35, keywords: ['om', '1:2', '3', '三平方', '5', 'オイラー', '誘導'] },
+          { label: 'BHとACの交点Eの比 AE:EC はメネラウスの定理（または相似）で立式する', weight: 30, keywords: ['メネラウス', '相似', 'チェバ', '比', '3:2'] }
+        ],
+        model: '鈍角三角形では外心O・垂心Hが外部。誘導OM:AH=1:2よりOM=3、BM=4から三平方でOA=5。AH=6よりOH=1、オイラー線(OG:GH=1:2)でOG=1/3。AE:ECは△ACMと直線BHにメネラウスの定理を適用して3:2。',
+        ifThen: '【If】共テ図形で(1)に辺の比の誘導が出たら → 【Then】(2)(3)で自力計算に走る前に必ず(1)の比を書き込んで使う'
+      },
+      {
+        id: 'ERR-097',
+        subj: '数学',
+        src: '共テ直前演習 第1回 数学ⅠA 第4問(3)（場合の数と確率）',
+        prompt: '1,2,3の球から各1個引き、異なれば大きい数の方がその数だけ進み、同じなら両者1段進む試行を2回行う。2回後に太郎が3段目で花子より上にいる確率で(0段,3段)の組に掛ける確率の求め方を述べよ。',
+        rubric: [
+          { label: '太郎が3段かつ「花子より上」となるには、もう1回で「太郎0段かつ花子2段以下」が必要と条件を絞る', weight: 40, keywords: ['花子', '2段以下', 'より上', '3段未満', '条件'] },
+          { label: '太郎0段の全確率P(0)をそのまま掛けず、花子も3段になり同点となる(1,3)(2,3)を除外する', weight: 40, keywords: ['同点', '除外', '1,3', '2,3', '3段', '除く'] },
+          { label: '条件を満たすのは(太郎1, 花子2)の1通り＝1/9と確定する', weight: 20, keywords: ['1/9', '1通り', '1,2'] }
+        ],
+        model: '太郎が3段目で「花子より上」にいるには、0段の回に花子が3段進んではいけない。太郎0段の3通り(1,2)(1,3)(2,3)から同点になる(1,3)(2,3)を除外し、(1,2)の1通り＝1/9だけを掛ける。',
+        ifThen: '【If】確率で「AがBより上（勝つ）」と出たら → 【Then】全事象を掛ける前に「同点・引き分けケースの除外」を指差し確認する'
+      },
+      {
+        id: 'ERR-074',
+        subj: '数学',
+        src: 'Focus Gold 数学B+C p.B1-48 例題B1.27（(-1)^nを含む数列の和）',
+        prompt: '(-1)^n を含む級数（符号が交互に入れ替わる数列の和 S_n）を求める際の基本方針と検算手順を述べよ。',
+        rubric: [
+          { label: 'nが偶数(n=2m)と奇数(n=2m-1または2m+1)で必ず場合分けする', weight: 45, keywords: ['偶奇', '偶数', '奇数', '2m', '場合分け'] },
+          { label: '隣り合う2項を1ペア（2k-1番目と2k番目）にまとめてΣ計算する', weight: 35, keywords: ['ペア', '2項', '組', 'まとめ', 'シグマ', 'Σ'] },
+          { label: '答えが出たら必ず n=1, 2（または3）を代入して具体的和と一致するか検算する', weight: 20, keywords: ['検算', 'n=1', 'n=2', '代入'] }
+        ],
+        model: '(-1)^nを含む和はn=2m（偶数）とn=2m-1（奇数）に場合分けし、2項ずつペアにしてΣ計算する。奇数の場合は偶数和S_{2m}から末項を引く（またはS_{2m-2}に末項を足す）。最後に必ずn=1,2を代入して検算する。',
+        ifThen: '【If】数列の和に (-1)^n を見たら → 【Then】即座に「nの偶奇場合分け＋2項ペア化＋n=1,2代入検算」の3手順を踏む'
+      },
+      {
+        id: 'ERR-076',
+        subj: '物理',
+        src: '良問の風 物理 p.32 問47（鉛直ばね振り子・離れる条件）',
+        prompt: '鉛直ばね上に載せた2物体が単振動し、上の物体が下の物体から「離れる条件」を立てる際の座標設定と立式手順を述べよ。',
+        rubric: [
+          { label: '「自然長の位置」と「つり合いの位置（振動中心）」を明確に描き分ける', weight: 35, keywords: ['自然長', '振動中心', 'つり合い', '描き分け', '区別'] },
+          { label: '垂直抗力 N = 0 となる瞬間（ばねが自然長になる位置・加速度が下向きg）を離れる条件とする', weight: 40, keywords: ['n=0', '垂直抗力', '0', '自然長', '加速度', 'g'] },
+          { label: '振幅Aが「振動中心から自然長までの距離」以上（A ≧ x0）になる条件で立式する', weight: 25, keywords: ['振幅', '距離', 'x0', '以上', '超える'] }
+        ],
+        model: '鉛直ばねでは「自然長位置」と「振動中心（つり合い位置）」を必ず別々に図示する。上の物体が離れる条件は垂直抗力N=0、すなわち運動方程式より加速度a=-g（自然長の位置）を通過すること。よって振幅Aが中心〜自然長距離以上になれば離れる。',
+        ifThen: '【If】鉛直ばね振り子で「離れる条件」を見たら → 【Then】「自然長」と「振動中心」の2本線を必ず図に描き、N=0（自然長通過）で立式する'
+      },
+      {
+        id: 'ERR-077',
+        subj: '物理',
+        src: '良問の風 物理 p.33 問48(4)（単振動の通過速さ）',
+        prompt: 'ばね定数k・質量Mの単振動で、振動中心から変位xの位置を通過する速さwを最速で求めるための立式方針を述べよ。',
+        rubric: [
+          { label: '振動中心を基準とした「単振動のエネルギー保存則」を立てる', weight: 50, keywords: ['エネルギー保存', '振動中心', '単振動', '1/2'] },
+          { label: '1/2 M w^2 + 1/2 k x^2 = 1/2 k A^2（または最大速度 v_max = Aω）と立式する', weight: 35, keywords: ['a^2', 'ka^2', 'kx^2', 'aω', '最大速度', '振幅'] },
+          { label: '重力による位置エネルギーを二重計上しない（振動中心基準なら弾性項のみで閉じる）', weight: 15, keywords: ['重力', '二重', '不要', '中心基準', 'mgh'] }
+        ],
+        model: '振動中心を原点とする単振動のエネルギー保存則「1/2 M w^2 + 1/2 k x^2 = 1/2 k A^2」を立てれば、重力項を考えずに最短で通過速さwが求まる（またはv_max = Aωから導出）。',
+        ifThen: '【If】単振動の途中位置での速さを問われたら → 【Then】自然長基準ではなく「振動中心基準の 1/2Mv^2 + 1/2kx^2 = 1/2kA^2」で一発立式する'
+      },
+      {
+        id: 'ERR-102',
+        subj: '地理',
+        src: '後期中間考査 地理探究 大問1-4・5-8・5-10（気候割合・Cfb vs Cs・北欧）',
+        prompt: '大陸別気候割合表から亜寒帯(D)と南半球を特定する手順、CfbとCsの雨温図の区別、および北欧3国（ノルウェー等）の低地割合と冬気温の判定基準を述べよ。',
+        rubric: [
+          { label: '南半球（アフリカ・南米・豪州）は亜寒帯(D)が 0.0% であることから特定する', weight: 35, keywords: ['0', '亜寒帯', '南半球', 'ない', 'ゼロ'] },
+          { label: 'Cfbは年中降水・夏涼しい(22℃未満)、Csは夏に明瞭な乾燥（少雨）で区別する', weight: 35, keywords: ['夏乾燥', '夏少雨', '年中', '20', '22', 'cfb', 'cs'] },
+          { label: 'ノルウェーは山がちで標高200m以下が最小、かつ暖流（北大西洋海流）で冬が温暖（0℃前後）', weight: 30, keywords: ['ノルウェー', '山', '最小', '暖流', '北大西洋', '冬'] }
+        ],
+        model: '①南半球の大陸は亜寒帯0.0%を手掛かりに特定する。②Cfbは年中降水・最暖月22℃未満、Csは夏乾燥・冬多雨。③ノルウェーはスカンディナビア山脈で200m以下割合が最小だが、北大西洋海流（暖流）により冬気温が最も高い。',
+        ifThen: '【If】大陸別気候表・欧州雨温図を見たら → 【Then】「南半球＝D 0.0%」「Cs＝夏凹み」「ノルウェー＝山＋暖流」の3基準で即切り分ける'
+      },
+      {
+        id: 'ERR-103',
+        subj: '地理',
+        src: '後期中間考査 地理探究 大問5-7・2-8（観光収支軸・南米降水）',
+        prompt: '横軸「国際観光収入」・縦軸「国際観光支出」の散布図からフランスを特定する手順、および南米ブラジル北東部（セルトン）沖合の海流とチリ南部多雨の要因を述べよ。',
+        rubric: [
+          { label: '横軸＝収入・縦軸＝支出を確認し、観光黒字（収入＞支出）のフランスを「右下」に特定する', weight: 40, keywords: ['横軸', '縦軸', '右下', '収入', '黒字', '超過'] },
+          { label: 'ブラジル北東部（セルトン）沖合は「暖流（ブラジル海流）」であり寒流ではないと見抜く', weight: 35, keywords: ['暖流', 'ブラジル海流', '寒流ではない', 'セルトン'] },
+          { label: 'チリ南部は「偏西風」がアンデス山脈にぶつかり多雨となる', weight: 25, keywords: ['偏西風', 'チリ', 'アンデス', '多雨'] }
+        ],
+        model: '散布図はまず横軸・縦軸の定義を指差し確認。横＝収入・縦＝支出ならフランスは収入超過の右下（ドイツは支出超過の左上）。ブラジル北東部沖は暖流（ブラジル海流）のため「寒流」記述は誤り。チリ南部は偏西風で多雨。',
+        ifThen: '【If】2軸散布図（観光・貿易等）を見たら → 【Then】点を見る前にまず「横軸と縦軸のラベル」を丸で囲んで黒字側を確定する'
+      },
+      {
+        id: 'CT-WEAK-JPN-001',
+        subj: '国語',
+        src: '直前演習 国語 第1回 第4問（古文『十訓抄』）',
+        prompt: '古文『十訓抄』の「春は三十日やはある」の反語が突っ込んでいる対象、反実仮想の選択肢で過剰解釈を切る基準、および『俊頼髄脳』と『十訓抄』の公任へのスタンスの違いを述べよ。',
+        rubric: [
+          { label: '「春は三十日やはある」は春は3か月（90日）あるのに3月だけに限定した歌への非難と捉える', weight: 35, keywords: ['3か月', '三か月', '90', '30日', '三月', '限定', '非難'] },
+          { label: '「論破できたはず」等の本文に根拠がない反実仮想・過剰解釈の選択肢を即切る', weight: 35, keywords: ['本文', '根拠', '過剰解釈', '論破', 'ない'] },
+          { label: '『俊頼髄脳』は長能への配慮を説き、『十訓抄』は行成の逸話と合わせて「言葉を慎む教訓」として機能', weight: 30, keywords: ['配慮', '言葉', '慎む', '教訓', '行成', '批判'] }
+        ],
+        model: '①「春は三十日やはある（いや3か月ある）」と三月に限定した詠みぶりを公任が非難。②「論破できたはず」のような本文外の推測・過剰解釈は即除外。③『俊頼髄脳』は執心深い長能への配慮、『十訓抄』は言葉を慎む教訓として機能している。',
+        ifThen: '【If】古文・評論の選択肢に「〜できたはず」「客観的評価」など強い断定を見たら → 【Then】本文の直接根拠がなければ過剰解釈として即切る'
+      },
+      {
+        id: 'ERR-092',
+        subj: '国語',
+        src: '河合塾『古典 完全攻略』漢文 第2問 問3（雖の返り点）',
+        prompt: '漢文「雖位総鼎司而委事僚寀」において、「雖」の返り点をレ点にせず三・二・一で返るべき文法上の判断基準を述べよ。',
+        rubric: [
+          { label: '「雖（いへども）」は接続詞であり、直後の語が動詞ではなく主語（名詞「位」）か確認する', weight: 50, keywords: ['主語', '名詞', '位', '接続詞', '直後'] },
+          { label: '直後が主語＋述語の節構造なので、節の末尾の動詞（述語）から一二点（三二一）で返る', weight: 50, keywords: ['節', '末尾', '動詞', '述語', '一二', '三二一', 'レ点ではない'] }
+        ],
+        model: '「雖」の直後が主語（名詞「位」）であり、主語＋動詞＋目的語の節全体を受けるため、直後の名詞へレ点で返るのではなく、節末尾の述語から一二点（三・二・一）で「雖」へ返る。',
+        ifThen: '【If】漢文で「雖」「使」「為」の返り点問題を見たら → 【Then】直後が「名詞（主語）か動詞か」を確認し、名詞ならレ点ではなく節末から一二点で返す'
+      },
+      {
+        id: 'ERR-108',
+        subj: '英語',
+        src: 'Reach 40 第1回テストA 第5問（複数資料クロス照合）',
+        prompt: '応募要項・4つのレシピ・運営メールを照合する問題で、(1)4品共通条件、(2)対象年齢不適で除外された1品、(3)メールで筆者本人に要請された行動、を落とさず特定する手順を述べよ。',
+        rubric: [
+          { label: '応募要項の数値・年齢条件（4歳以上全員＝高齢者含む、40分以内等）を最初にマークする', weight: 35, keywords: ['年齢', '高齢者', '40分', '要項', '条件', 'マーク'] },
+          { label: '4レシピを表のように縦横チェックし、共通食材の有無・時間・対象不適（hard for older adults）を照合する', weight: 35, keywords: ['照合', '高齢者', 'hard', '共通', '食材', '表', '全件'] },
+          { label: 'メールの要請は「主語（you＝筆者本人か他者か）」と「目的語（追加コメント等）」を正確に確認する', weight: 30, keywords: ['主語', 'you', '本人', '目的語', '言い換え', 'コメント'] }
+        ],
+        model: '①要項の制約条件（4歳以上全員＝高齢者含む・40分以内）に印をつける。②4レシピを条件ごとに全件照合し、hard for older adults（Granola Bars）の除外を見抜く。③メールの要請は主語（本人かチームか）と目的語の言い換えを厳密に確認する。',
+        ifThen: '【If】共テ英語Rで複数資料（要項＋一覧＋メール）を見たら → 【Then】「対象年齢の端（幼児・高齢者）」と「メールの主語you」を必ず印付けして照合する'
+      },
+      {
+        id: 'ERR-109',
+        subj: '英語',
+        src: 'Reach 40 第1回テストA 第3問 問1（時系列・感情変化）',
+        prompt: '記事中の登場人物の感情変化（6段階）を正しい時系列に並べ替える際、本文の記述順に惑わされて逆転するミスを防ぐ手順を述べよ。',
+        rubric: [
+          { label: '過去完了形（had + p.p.）や ever since / before などの時制・時間表現に印をつける', weight: 50, keywords: ['過去完了', 'had', '時制', 'ever since', 'before', '時間'] },
+          { label: '本文の「書かれている順番」ではなく、実際の出来事の時系列（過去完了はそれより前）に並べ直す', weight: 50, keywords: ['記述順', '時系列', '前', '順番', '逆転', '出来事'] }
+        ],
+        model: 'relievedの引用直後に過去完了 had been worried が書かれていたように、英語記事は回想で時系列が前後する。過去完了(had + p.p.)や時間標識に印をつけ、必ず「記述順」ではなく「実際の時間軸」で並べ替える。',
+        ifThen: '【If】英語Rの時系列並べ替え問題を見たら → 【Then】過去完了（had + p.p.）に印をつけ、「書かれた順ではなく実際の時間軸で前」へ戻す'
+      }
+    ];
+
+    const STORAGE_KEY = 'strategy_trainer_srs_v1';
+    const CUSTOM_KEY = 'strategy_trainer_custom_v1';
+    const SRS_STEPS = [
+      { stage: 0, label: '初回解き直し (+1日)', days: 1, badge: 'bg-rose-100 text-rose-800' },
+      { stage: 1, label: '30秒チェック① (+3日)', days: 3, badge: 'bg-amber-100 text-amber-900' },
+      { stage: 2, label: '30秒チェック② (+7日)', days: 7, badge: 'bg-indigo-100 text-indigo-800' },
+      { stage: 3, label: '卒業（定着済）', days: 21, badge: 'bg-emerald-100 text-emerald-800' }
+    ];
+
+    function loadJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return fallback;
+    }
+    function saveJson(key, val) {
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+    }
+
+    let appState = loadJson(STORAGE_KEY, { srs: {} });
+    let customProblems = loadJson(CUSTOM_KEY, []);
+
+    function getAllProblems() {
+      return [...DEFAULT_PROBLEMS, ...customProblems];
+    }
+
+    let activeSubj = 'ALL';
+    let deck = [];
+    let idx = 0;
+    let isFreeMode = false;
+    let timerInterval = null;
+    let timeLeft = 60.0;
+    let currentRubricHits = [];
+    let sessionLogs = [];
+
+    const el = (id) => document.getElementById(id);
+
+    function getSrsStage(pid) {
+      return (appState.srs[pid] && typeof appState.srs[pid].stage === 'number') ? appState.srs[pid].stage : 0;
+    }
+
+    function updateGradCount() {
+      const all = getAllProblems();
+      const grad = all.filter(p => getSrsStage(p.id) >= 3).length;
+      el('gradCount').textContent = grad;
+      el('totalProbCount').textContent = all.length;
+    }
+
+    function showToast(msg) {
+      const t = el('toast');
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 2400);
+    }
+
+    function normalize(str) {
+      return (str || '')
+        .replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+        .replace(/[：]/g, ':').replace(/[＞]/g, '>').replace(/[＜]/g, '<')
+        .replace(/[＝]/g, '=').replace(/[−ー―]/g, '-').replace(/\s+/g, '').toLowerCase();
+    }
+
+    function stopTimer() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    }
+
+    function startTimer() {
+      stopTimer();
+      const secs = parseInt(el('timerMode').value, 10);
+      if (!secs) {
+        el('timerText').textContent = '制限なし';
+        el('timerBar').style.width = '100%';
+        el('timerBar').className = 'timer-bar h-full bg-slate-300';
+        return;
+      }
+      timeLeft = secs;
+      el('timerText').textContent = `${timeLeft.toFixed(1)}s`;
+      el('timerText').className = 'text-slate-700 tabular-nums';
+      el('timerBar').style.width = '100%';
+      el('timerBar').className = 'timer-bar h-full bg-slate-900';
+      timerInterval = setInterval(() => {
+        timeLeft = Math.max(0, timeLeft - 0.1);
+        el('timerText').textContent = `${timeLeft.toFixed(1)}s`;
+        el('timerBar').style.width = `${(timeLeft / secs) * 100}%`;
+        if (timeLeft <= 10) {
+          el('timerBar').className = 'timer-bar h-full bg-rose-600';
+          el('timerText').className = 'text-rose-600 font-bold tabular-nums';
+        }
+        if (timeLeft <= 0) {
+          stopTimer();
+          showToast('制限時間到達：「方針を採点する」をタップ');
+        }
+      }, 100);
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function startDeck(limit = null) {
+      const all = getAllProblems();
+      let pool = activeSubj === 'ALL' ? all : all.filter(p => p.subj === activeSubj);
+      if (pool.length === 0) pool = all;
+      const ungrad = shuffle(pool.filter(p => getSrsStage(p.id) < 3));
+      const grad = shuffle(pool.filter(p => getSrsStage(p.id) >= 3));
+      let ordered = [...ungrad, ...grad];
+      if (limit) ordered = ordered.slice(0, limit);
+      deck = ordered;
+      idx = 0;
+      sessionLogs = [];
+      el('completeCard').classList.add('hidden');
+      el('trainerCard').classList.remove('hidden');
+      renderProblem();
+    }
+
+    function renderProblem() {
+      const p = deck[idx];
+      const stage = getSrsStage(p.id);
+      const srsInfo = SRS_STEPS[Math.min(stage, 3)];
+      el('pId').textContent = p.id;
+      el('pSubj').textContent = p.subj;
+      el('pSrs').textContent = srsInfo.label;
+      el('pSrs').className = `text-xs font-semibold px-2 py-0.5 rounded ${srsInfo.badge}`;
+      el('pProgress').textContent = `${idx + 1} / ${deck.length}`;
+      el('pSource').textContent = p.src;
+      el('pPrompt').textContent = p.prompt;
+
+      el('inLaw').value = '';
+      el('inStep').value = '';
+      el('inTrap').value = '';
+      el('inFree').value = '';
+      el('inputArea').classList.remove('hidden');
+      el('resultPanel').classList.add('hidden');
+      startTimer();
+    }
+
+    function gradeCurrent() {
+      stopTimer();
+      const rawText = isFreeMode
+        ? el('inFree').value
+        : `${el('inLaw').value} ${el('inStep').value} ${el('inTrap').value}`;
+      const norm = normalize(rawText);
+      const p = deck[idx];
+
+      currentRubricHits = p.rubric.map(item => {
+        if (!norm) return false;
+        return item.keywords.some(kw => norm.includes(normalize(kw)));
+      });
+
+      el('modelAnswer').textContent = p.model;
+      el('modelIfThen').textContent = p.ifThen;
+      el('resultPanel').classList.remove('hidden');
+      renderRubricAndVerdict();
+    }
+
+    function computeScoreAndVerdict() {
+      const p = deck[idx];
+      let score = 0;
+      p.rubric.forEach((item, i) => { if (currentRubricHits[i]) score += item.weight; });
+      const curStage = getSrsStage(p.id);
+      let verdict, nextStage, cls;
+      if (score >= 80) {
+        nextStage = Math.min(3, curStage + 1);
+        verdict = nextStage >= 3 ? '【合格・卒業】方針が完全に定着' : '【合格】SRS間隔を前進';
+        cls = 'bg-emerald-50 border-emerald-200 text-emerald-900';
+      } else if (score >= 50) {
+        nextStage = curStage === 0 ? 1 : curStage;
+        verdict = '【惜しい（1行修正）】核心は掴めているが詰め不足';
+        cls = 'bg-amber-50 border-amber-200 text-amber-900';
+      } else {
+        nextStage = 0;
+        verdict = '【不合格（解き直しへ戻す）】方針の再構築が必要';
+        cls = 'bg-rose-50 border-rose-200 text-rose-900';
+      }
+      return { score, verdict, nextStage, cls };
+    }
+
+    function renderRubricAndVerdict() {
+      const p = deck[idx];
+      const { score, verdict, nextStage, cls } = computeScoreAndVerdict();
+      const nextSrs = SRS_STEPS[nextStage];
+
+      el('verdictBanner').className = `rounded-xl p-3.5 border flex flex-wrap items-center justify-between gap-2 ${cls}`;
+      el('verdictTitle').textContent = verdict;
+      el('verdictNextSrs').textContent = `次回ステータス：${nextSrs.label}`;
+      el('verdictScore').textContent = `${score} / 100点`;
+
+      el('rubricList').innerHTML = p.rubric.map((item, i) => {
+        const hit = currentRubricHits[i];
+        return `
+          <button type="button" data-ridx="${i}" class="rubric-toggle w-full text-left p-3 rounded-xl border flex items-start justify-between gap-3 transition ${hit ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
+            <div class="flex items-start gap-2.5">
+              <span class="shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center mt-0.5 ${hit ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}">${hit ? '○' : '×'}</span>
+              <span class="text-xs sm:text-sm font-medium leading-snug">${item.label}</span>
+            </div>
+            <span class="shrink-0 text-xs font-bold tabular-nums">${item.weight}点</span>
+          </button>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.rubric-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.ridx, 10);
+          currentRubricHits[i] = !currentRubricHits[i];
+          renderRubricAndVerdict();
+        });
+      });
+    }
+
+    function confirmAndNext() {
+      const p = deck[idx];
+      const { score, verdict, nextStage } = computeScoreAndVerdict();
+      const nextSrs = SRS_STEPS[nextStage];
+      appState.srs[p.id] = { stage: nextStage, lastScore: score, updatedAt: new Date().toISOString().slice(0, 10) };
+      saveJson(STORAGE_KEY, appState);
+      updateGradCount();
+
+      sessionLogs.push({ id: p.id, subj: p.subj, score, verdict, nextLabel: nextSrs.label });
+      if (idx < deck.length - 1) { idx += 1; renderProblem(); }
+      else { showComplete(); }
+    }
+
+    function showComplete() {
+      stopTimer();
+      el('trainerCard').classList.add('hidden');
+      el('completeCard').classList.remove('hidden');
+      const passed = sessionLogs.filter(l => l.score >= 80).length;
+      el('summaryPass').textContent = `${passed} / ${sessionLogs.length}問 合格`;
+      el('sessionLogList').innerHTML = sessionLogs.map(l => `
+        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="font-mono font-bold text-slate-900 mr-2">${l.id}</span>
+            <span class="text-slate-600 mr-2">[${l.subj}]</span>
+            <span class="font-semibold text-slate-900">${l.score}点</span>
+          </div>
+          <span class="text-xs font-semibold text-indigo-800">${l.nextLabel}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderManageList() {
+      const all = getAllProblems();
+      el('manageCount').textContent = all.length;
+      el('manageList').innerHTML = all.map(p => {
+        const isCustom = p.id.startsWith('MY-');
+        const st = SRS_STEPS[Math.min(getSrsStage(p.id), 3)];
+        return `
+          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
+                <span class="text-[11px] font-mono font-bold text-slate-900">${p.id}</span>
+                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700">${p.subj}</span>
+                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded ${st.badge}">${st.label}</span>
+              </div>
+              <div class="text-xs text-slate-700 truncate">${p.src}</div>
+            </div>
+            ${isCustom ? `<button type="button" data-del="${p.id}" class="del-btn shrink-0 text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1">削除</button>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.del-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const delId = btn.dataset.del;
+          customProblems = customProblems.filter(x => x.id !== delId);
+          saveJson(CUSTOM_KEY, customProblems);
+          updateGradCount();
+          renderManageList();
+          showToast(`${delId} を削除しました`);
+        });
+      });
+    }
+
+    function addCustomProblem() {
+      const subj = el('addSubj').value;
+      const src = el('addSrc').value.trim();
+      const prompt = el('addPrompt').value.trim();
+      const kwRaw = el('addKeywords').value.trim();
+      const model = el('addModel').value.trim();
+      const ifThen = el('addIfThen').value.trim() || '【If】同パターンの設問を見たら → 【Then】模範方針のキーワードを即座に確認する';
+
+      if (!src || !prompt || !kwRaw || !model) {
+        showToast('教材・設問条件・キーワード・模範方針を入力してください');
+        return;
+      }
+      const kws = kwRaw.split(/[,、\s]+/).map(s => s.trim()).filter(Boolean);
+      const id = `MY-${String(customProblems.length + 1).padStart(3, '0')}`;
+      const chunkSize = Math.max(1, Math.ceil(kws.length / 2));
+      const g1 = kws.slice(0, chunkSize);
+      const g2 = kws.slice(chunkSize);
+      const rubric = g2.length > 0
+        ? [
+            { label: `核心キーワード（${g1.join(' / ')}）を盛り込む`, weight: 50, keywords: g1 },
+            { label: `立式・注意点（${g2.join(' / ')}）を盛り込む`, weight: 50, keywords: g2 }
+          ]
+        : [{ label: `核心キーワード（${g1.join(' / ')}）を盛り込む`, weight: 100, keywords: g1 }];
+
+      customProblems.push({ id, subj, src, prompt, rubric, model, ifThen });
+      saveJson(CUSTOM_KEY, customProblems);
+      el('addSrc').value = '';
+      el('addPrompt').value = '';
+      el('addKeywords').value = '';
+      el('addModel').value = '';
+      el('addIfThen').value = '';
+      updateGradCount();
+      renderManageList();
+      showToast(`${id} を追加しました`);
+    }
+
+    function copyText(text, label = 'コピーしました') {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast(label)).catch(() => fallbackCopy(text, label));
+      } else {
+        fallbackCopy(text, label);
+      }
+    }
+
+    function fallbackCopy(text, label) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast(label); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    function buildSyncText() {
+      const logs = sessionLogs.length > 0 ? sessionLogs : Object.entries(appState.srs).map(([id, v]) => ({
+        id, score: v.lastScore, nextLabel: SRS_STEPS[Math.min(v.stage, 3)].label
+      }));
+      if (logs.length === 0) return 'まだ採点ログがありません。';
+      const lines = ['【30秒方針チェック採点結果（シート反映用）】'];
+      logs.forEach(l => lines.push(`- ${l.id}: ${l.score}点 → ${l.nextLabel}`));
+      return lines.join('\n');
+    }
+
+    function switchNav(target) {
+      stopTimer();
+      const map = {
+        trainer: ['navTrainer', 'viewTrainer'],
+        manage: ['navManage', 'viewManage'],
+        install: ['navInstall', 'viewInstall']
+      };
+      Object.entries(map).forEach(([k, [nid, vid]]) => {
+        const active = k === target;
+        el(vid).classList.toggle('hidden', !active);
+        el(nid).className = active
+          ? 'py-3 flex flex-col items-center justify-center text-xs font-bold text-slate-900 border-t-2 border-slate-900'
+          : 'py-3 flex flex-col items-center justify-center text-xs font-medium text-slate-500 border-t-2 border-transparent hover:text-slate-800';
+      });
+      if (target === 'manage') renderManageList();
+      if (target === 'trainer' && el('resultPanel').classList.contains('hidden') && el('completeCard').classList.contains('hidden')) startTimer();
+    }
+
+    // Event bindings
+    el('navTrainer').addEventListener('click', () => switchNav('trainer'));
+    el('navManage').addEventListener('click', () => switchNav('manage'));
+    el('navInstall').addEventListener('click', () => switchNav('install'));
+
+    document.querySelectorAll('.subj-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeSubj = btn.dataset.subj;
+        document.querySelectorAll('.subj-btn').forEach(b => {
+          b.className = b.dataset.subj === activeSubj
+            ? 'subj-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900 text-white'
+            : 'subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
+        });
+        startDeck();
+      });
+    });
+
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const n = parseInt(btn.dataset.quick, 10);
+        startDeck(n);
+        showToast(`${n}問のスキマ即出しセットを開始`);
+      });
+    });
+
+    el('btnToggleMode').addEventListener('click', () => {
+      isFreeMode = !isFreeMode;
+      el('structuredInputs').classList.toggle('hidden', isFreeMode);
+      el('freeInput').classList.toggle('hidden', !isFreeMode);
+      el('btnToggleMode').textContent = isFreeMode ? '3欄（法則・順序・罠）へ戻す' : '1欄フリー記述へ切替';
+    });
+
+    el('timerMode').addEventListener('change', () => {
+      if (el('resultPanel').classList.contains('hidden')) startTimer();
+    });
+
+    el('btnGrade').addEventListener('click', () => gradeCurrent());
+    el('btnSkip').addEventListener('click', () => {
+      if (idx < deck.length - 1) { idx += 1; renderProblem(); }
+      else { showComplete(); }
+    });
+    el('btnConfirmNext').addEventListener('click', () => confirmAndNext());
+    el('btnCopyLog').addEventListener('click', () => copyText(buildSyncText(), '採点ログをコピーしました'));
+    el('btnCopySummary').addEventListener('click', () => copyText(buildSyncText(), 'シート同期用ログをコピーしました'));
+    el('btnNewSet').addEventListener('click', () => startDeck());
+    el('btnAddProblem').addEventListener('click', () => addCustomProblem());
+    el('btnExportJson').addEventListener('click', () => copyText(JSON.stringify({ srs: appState.srs, custom: customProblems }, null, 2), 'バックアップJSONをコピーしました'));
+
+    // Init
+    updateGradCount();
+    startDeck();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
