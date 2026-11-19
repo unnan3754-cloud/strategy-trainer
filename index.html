@@ -1,903 +1,851 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#020617">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="30秒方針">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%230f172a'/%3E%3Crect x='20' y='20' width='152' height='152' rx='28' fill='none' stroke='%2338bdf8' stroke-width='6'/%3E%3Ctext x='96' y='96' text-anchor='middle' dominant-baseline='central' fill='%23ffffff' font-family='sans-serif' font-weight='bold' font-size='64'%3E30s%3C/text%3E%3Ctext x='96' y='142' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif' font-weight='bold' font-size='20'%3ESTRATEGY%3C/text%3E%3C/svg%3E">
+  <meta name="apple-mobile-web-app-title" content="教材ページ">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%23020617'/%3E%3Crect x='22' y='22' width='148' height='148' rx='26' fill='none' stroke='%2338bdf8' stroke-width='6'/%3E%3Ctext x='96' y='92' text-anchor='middle' dominant-baseline='central' fill='%23ffffff' font-family='sans-serif' font-weight='bold' font-size='56'%3EPDF%3C/text%3E%3Ctext x='96' y='140' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif' font-weight='bold' font-size='20'%3ETASK JUMP%3C/text%3E%3C/svg%3E">
     <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>30秒方針チェック・記述採点トレーナー</title>
+  <title>教材ページ直飛び＆今日のタスク</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; padding-bottom: 5.5rem; }
-    .timer-bar { transition: width 0.1s linear; }
+    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; padding-bottom: 6.5rem; }
+    #pdfCanvasWrap { -webkit-overflow-scrolling: touch; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
-  <div class="max-w-3xl mx-auto px-4 py-5 sm:py-8">
-    <!-- Header -->
-    <header class="mb-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <span class="inline-block text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded bg-slate-900 text-white mb-1">スマホ完結PWA・SRS忘却曲線</span>
-          <h1 class="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">30秒方針チェック・記述採点トレーナー</h1>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-3xl mx-auto px-4 py-5 sm:py-7">
+    <!-- Compact Header -->
+    <header class="mb-5 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="flex items-center gap-1.5 flex-wrap mb-1">
+          <span id="badgeSync" class="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">初期データ表示</span>
+          <span id="badgePdfCount" class="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-sky-950 text-sky-300 border border-sky-800">PDF 0ファイル読込済</span>
         </div>
-        <div class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm text-right">
-          <div class="text-[10px] text-slate-500">卒業済（SRS完了）</div>
-          <div class="text-sm sm:text-base font-bold text-emerald-700 tabular-nums"><span id="gradCount">0</span> / <span id="totalProbCount">16</span></div>
-        </div>
+        <h1 class="text-lg sm:text-2xl font-bold text-white tracking-tight truncate">教材ページ直飛び＆今日のタスク</h1>
       </div>
+      <button id="btnHeaderSync" type="button" class="shrink-0 text-sm font-bold px-4 py-3 rounded-xl bg-sky-500 text-slate-950 hover:bg-sky-400 active:scale-[0.98] transition shadow-md">タスク同期</button>
     </header>
 
     <!-- Toast -->
-    <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap"></div>
+    <div id="toast" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white border border-slate-700 text-xs sm:text-sm font-semibold px-5 py-3 rounded-full shadow-xl whitespace-nowrap max-w-[92vw] truncate"></div>
 
-    <!-- VIEW 1: TRAINER -->
-    <div id="viewTrainer">
-      <!-- Quick Gap-Time Mode + Subject Filters -->
-      <div class="mb-4 bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-2.5">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-xs font-bold text-slate-500 mr-0.5">即出し:</span>
-            <button type="button" data-quick="1" class="quick-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200 transition">5分(1問)</button>
-            <button type="button" data-quick="2" class="quick-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200 transition">10分(2問)</button>
-            <button type="button" data-quick="3" class="quick-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200 transition">15分(3問)</button>
-          </div>
-          <div class="flex items-center gap-2">
-            <select id="timerMode" class="text-xs font-medium border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-slate-900">
-              <option value="60">制限60秒</option>
-              <option value="30">制限30秒</option>
-              <option value="0">制限なし</option>
-            </select>
-            <button id="btnCopyLog" type="button" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition">ログコピー</button>
-          </div>
-        </div>
-        <div class="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100" id="subjectFilters">
-          <button type="button" data-subj="ALL" class="subj-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900 text-white">全科目</button>
-          <button type="button" data-subj="化学" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">化学</button>
-          <button type="button" data-subj="数学" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">数学</button>
-          <button type="button" data-subj="物理" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">物理</button>
-          <button type="button" data-subj="地理" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">地理</button>
-          <button type="button" data-subj="国語" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">国語</button>
-          <button type="button" data-subj="英語" class="subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">英語</button>
-        </div>
+    <!-- VIEW 1: TODAY'S TASKS -->
+    <section id="viewTasks" class="space-y-4">
+      <div class="flex items-center justify-between text-xs sm:text-sm text-slate-400 px-1">
+        <span id="taskDateLabel" class="font-semibold text-slate-200"></span>
+        <span id="taskDoneCount" class="font-bold tabular-nums text-sky-400">0 / 0 完了</span>
       </div>
-
-      <!-- Main Problem Card -->
-      <main id="trainerCard" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div class="h-1.5 bg-slate-100 w-full">
-          <div id="timerBar" class="timer-bar h-full bg-slate-900 w-full"></div>
-        </div>
-
-        <div class="p-4 sm:p-6">
-          <!-- Meta -->
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span id="pId" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-900 text-white"></span>
-              <span id="pSubj" class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700"></span>
-              <span id="pSrs" class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-900"></span>
-            </div>
-            <div class="flex items-center gap-3 text-xs font-semibold">
-              <span id="timerText" class="text-slate-700 tabular-nums">60.0s</span>
-              <span id="pProgress" class="text-slate-500 tabular-nums">1 / 16</span>
-            </div>
-          </div>
-
-          <div class="text-xs text-slate-500 mb-1.5" id="pSource"></div>
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 mb-4">
-            <div class="text-[11px] font-bold uppercase tracking-wide text-indigo-700 mb-1">設問条件（公式・解法非表示）</div>
-            <p id="pPrompt" class="text-sm sm:text-base font-bold text-slate-900 leading-relaxed"></p>
-          </div>
-
-          <!-- Strategy Input Form -->
-          <div id="inputArea" class="space-y-3 mb-4">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-700">方針を記述（キーワード中心でOK）</span>
-              <button id="btnToggleMode" type="button" class="text-xs font-medium text-indigo-700 hover:underline">1欄フリー記述へ切替</button>
-            </div>
-
-            <div id="structuredInputs" class="space-y-2.5">
-              <div>
-                <label for="inLaw" class="block text-xs font-semibold text-slate-600 mb-1">① 使う法則・公式・着眼点</label>
-                <input id="inLaw" type="text" placeholder="例：全気体仮定P_仮と飽和蒸気圧P0の比較..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900">
-              </div>
-              <div>
-                <label for="inStep" class="block text-xs font-semibold text-slate-600 mb-1">② 立式・解法の順序</label>
-                <textarea id="inStep" rows="2" placeholder="例：仮想圧を状態方程式で計算→P0より大きければ凝縮..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900"></textarea>
-              </div>
-              <div>
-                <label for="inTrap" class="block text-xs font-semibold text-slate-600 mb-1">③ 注意すべき罠（符号・定義域・軸・例外条件）</label>
-                <input id="inTrap" type="text" placeholder="例：同点ケースの除外、横軸と縦軸の取り違え..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900">
-              </div>
-            </div>
-
-            <div id="freeInput" class="hidden">
-              <textarea id="inFree" rows="4" placeholder="使う法則・立式の順序・注意すべき罠をまとめて書いてください..." class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-slate-900"></textarea>
-            </div>
-
-            <div class="flex items-center justify-between pt-1">
-              <button id="btnSkip" type="button" class="text-xs font-medium text-slate-500 hover:text-slate-800 py-2">スキップ</button>
-              <button id="btnGrade" type="button" class="px-5 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 active:scale-[0.99] transition shadow-sm">方針を採点する</button>
-            </div>
-          </div>
-
-          <!-- Grading Result Panel -->
-          <div id="resultPanel" class="hidden border-t border-slate-200 pt-4 mt-4 space-y-4">
-            <div id="verdictBanner" class="rounded-xl p-3.5 border flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div id="verdictTitle" class="text-sm sm:text-base font-bold"></div>
-                <div id="verdictNextSrs" class="text-xs font-medium mt-0.5"></div>
-              </div>
-              <div class="text-right">
-                <div class="text-[11px] font-semibold opacity-75">採点スコア</div>
-                <div id="verdictScore" class="text-xl sm:text-2xl font-bold tabular-nums"></div>
-              </div>
-            </div>
-
-            <div>
-              <h3 class="text-xs font-bold text-slate-700 mb-2">採点ルーブリック（表現違いで書けた項目はタップで○/×補正可）</h3>
-              <div id="rubricList" class="space-y-2"></div>
-            </div>
-
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
-              <div>
-                <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-0.5">模範方針・立式</div>
-                <p id="modelAnswer" class="text-xs sm:text-sm text-slate-900 leading-relaxed font-medium"></p>
-              </div>
-              <div class="pt-2 border-t border-slate-200">
-                <div class="text-[11px] font-bold uppercase tracking-wide text-indigo-700 mb-0.5">If-Then 条件反射ルール</div>
-                <p id="modelIfThen" class="text-xs sm:text-sm text-slate-900 font-bold leading-snug"></p>
-              </div>
-            </div>
-
-            <button id="btnConfirmNext" type="button" class="w-full py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 active:scale-[0.99] transition">判定を確定して次へ →</button>
-          </div>
-        </div>
-      </main>
-
-      <!-- Session Complete Card -->
-      <section id="completeCard" class="hidden bg-white border border-slate-200 rounded-2xl p-5 sm:p-8 shadow-sm">
-        <div class="text-center mb-5">
-          <span class="inline-block px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold mb-2">セット完了</span>
-          <h2 class="text-xl font-bold text-slate-900">今回の採点結果：<span id="summaryPass"></span></h2>
-          <p class="text-xs text-slate-600 mt-1">スマホ内にSRS記録を保存しました。シートにも反映したい場合はログをコピーしてください。</p>
-        </div>
-        <div id="sessionLogList" class="space-y-2 mb-5 text-xs sm:text-sm"></div>
-        <div class="flex flex-wrap justify-center gap-3">
-          <button id="btnCopySummary" type="button" class="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition">シート同期用ログをコピー</button>
-          <button id="btnNewSet" type="button" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition">別のセットを開始</button>
-        </div>
-      </section>
-    </div>
-
-    <!-- VIEW 2: MANAGE / ADD PROBLEMS ON PHONE -->
-    <section id="viewManage" class="hidden space-y-4">
-      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
-        <h2 class="text-sm sm:text-base font-bold text-slate-900 mb-1">スマホから新しい弱点問題を追加</h2>
-        <p class="text-xs text-slate-500 mb-3">追加した問題はこのスマホのブラウザに保存され、そのまま30秒方針チェックに出題されます。</p>
-        <div class="space-y-2.5">
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label for="addSubj" class="block text-xs font-semibold text-slate-600 mb-1">科目</label>
-              <select id="addSubj" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl bg-white">
-                <option value="化学">化学</option>
-                <option value="数学">数学</option>
-                <option value="物理">物理</option>
-                <option value="地理">地理</option>
-                <option value="国語">国語</option>
-                <option value="英語">英語</option>
-              </select>
-            </div>
-            <div>
-              <label for="addSrc" class="block text-xs font-semibold text-slate-600 mb-1">教材・番号</label>
-              <input id="addSrc" type="text" placeholder="例：重問 p.55 準98" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl">
-            </div>
-          </div>
-          <div>
-            <label for="addPrompt" class="block text-xs font-semibold text-slate-600 mb-1">設問条件（公式・解法は伏せる）</label>
-            <textarea id="addPrompt" rows="2" placeholder="例：高温で生成物Cが減少するとき、正反応の熱化学と平衡定数Kの変化を判定する手順を述べよ。" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl"></textarea>
-          </div>
-          <div>
-            <label for="addKeywords" class="block text-xs font-semibold text-slate-600 mb-1">採点キーワード（カンマ区切り・3〜6個）</label>
-            <input id="addKeywords" type="text" placeholder="例：ルシャトリエ, 吸熱, 発熱, 逆反応, 小さく" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl">
-          </div>
-          <div>
-            <label for="addModel" class="block text-xs font-semibold text-slate-600 mb-1">模範方針（採点後に表示）</label>
-            <textarea id="addModel" rows="2" placeholder="例：高温で逆反応が進行＝逆反応が吸熱→正反応は発熱。Kは小さくなる。" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl"></textarea>
-          </div>
-          <div>
-            <label for="addIfThen" class="block text-xs font-semibold text-slate-600 mb-1">If-Thenルール（任意）</label>
-            <input id="addIfThen" type="text" placeholder="例：【If】温度上昇でC減少を見たら → 【Then】逆反応＝吸熱と書いてから正反応を決める" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl">
-          </div>
-          <button id="btnAddProblem" type="button" class="w-full py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition">この問題を追加する</button>
-        </div>
-      </div>
-
-      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <h3 class="text-sm font-bold text-slate-900">登録済み問題一覧（<span id="manageCount">16</span>問）</h3>
-          <div class="flex gap-2">
-            <button id="btnExportJson" type="button" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100">バックアップコピー</button>
-          </div>
-        </div>
-        <div id="manageList" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
-      </div>
+      <div id="taskListContainer" class="space-y-3.5"></div>
     </section>
 
-    <!-- VIEW 3: PWA INSTALL GUIDE -->
-    <section id="viewInstall" class="hidden space-y-4">
-      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-        <h2 class="text-base font-bold text-slate-900">スマホのホーム画面に追加してアプリ化する方法</h2>
-        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 text-xs sm:text-sm text-indigo-950 leading-relaxed">
-          <div class="font-bold mb-1">ステップ1：無料URLで公開する（所要1分・初回のみ）</div>
-          iPhone（Safari）はローカルファイルのままだとホーム画面に追加できないため、配布した <span class="font-mono font-bold">strategy_trainer_pwa.zip</span> を <strong>Netlify Drop</strong>（app.netlify.com/drop）または <strong>GitHub Pages</strong> にアップロードして自分の専用URL（https://〜）を発行します。
-        </div>
-        <div class="space-y-3 text-xs sm:text-sm text-slate-700">
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-            <div class="font-bold text-slate-900 mb-1">ステップ2（iPhone / Safari）</div>
-            <ol class="list-decimal list-inside space-y-1">
-              <li>発行した自分の専用URLを <strong>Safari</strong> で開く</li>
-              <li>画面下部の <strong>共有ボタン（□に↑）</strong> をタップ</li>
-              <li><strong>「ホーム画面に追加」</strong> → 右上の「追加」をタップ</li>
-            </ol>
-          </div>
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-            <div class="font-bold text-slate-900 mb-1">ステップ2（Android / Chrome）</div>
-            <ol class="list-decimal list-inside space-y-1">
-              <li>発行した自分の専用URLを <strong>Chrome</strong> で開く</li>
-              <li>右上の <strong>︙（メニュー）</strong> をタップ</li>
-              <li><strong>「ホーム画面に追加」</strong> または <strong>「アプリをインストール」</strong> をタップ</li>
-            </ol>
+    <!-- VIEW 2: CROSS-TEXTBOOK SEARCH & DIRECT PAGE JUMP -->
+    <section id="viewSearch" class="hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
+        <div class="text-xs sm:text-sm font-bold text-slate-200">PDFファイル名＆ページ番号を直接指定して開く</div>
+        <div class="flex flex-col sm:flex-row gap-2.5">
+          <select id="jumpFileSelect" class="flex-1 min-w-0 px-3 py-3 text-sm border border-slate-700 rounded-xl bg-slate-950 text-slate-100 font-medium focus:outline-none focus:border-sky-500"></select>
+          <div class="flex gap-2.5">
+            <input id="jumpPageInput" type="number" min="1" placeholder="p." class="w-24 px-3 py-3 text-base font-bold border border-slate-700 rounded-xl bg-slate-950 text-white text-center tabular-nums focus:outline-none focus:border-sky-500">
+            <button id="btnDirectJump" type="button" class="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-sky-500 text-slate-950 text-sm font-bold hover:bg-sky-400 active:scale-[0.98] transition">開く</button>
           </div>
         </div>
-        <p class="text-xs text-slate-500">※一度ホーム画面に追加して開けば、オフライン環境（通学中・地下鉄等）でも動作し、追加した問題やSRS学習履歴はすべてスマホ内に保存されます。</p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
+        <input id="searchInput" type="search" placeholder="問題番号・ファイル名・単元で検索（例：例題158、問47、vol.2）" class="w-full px-4 py-3 text-sm border border-slate-700 rounded-xl bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+        <div class="flex flex-wrap gap-2" id="searchBookChips"></div>
+      </div>
+
+      <div id="searchResults" class="space-y-2.5"></div>
+    </section>
+
+    <!-- VIEW 3: PDF LIBRARY & SHEET SYNC SETTINGS -->
+    <section id="viewLibrary" class="hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3.5">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-white">① 毎朝タスクの自動同期（スプレッドシート連携）</h2>
+          <p class="text-xs text-slate-400 mt-1">『アプリ連携タスク』シートのCSV公開URLを保存すると、毎朝7:30にGeminiが作ったPDFファイル名＆ページ番号付きタスクが自動反映されます。</p>
+        </div>
+        <input id="inSheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&single=true&output=csv" class="w-full px-3.5 py-3 text-xs sm:text-sm border border-slate-700 rounded-xl bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5">
+          <button id="btnSaveSheetUrl" type="button" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-sky-500 text-slate-950 text-sm font-bold hover:bg-sky-400 active:scale-[0.98] transition">URLを保存して同期</button>
+          <span id="sheetSyncMsg" class="text-xs text-slate-400"></span>
+        </div>
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-400 leading-relaxed">
+          <span class="font-bold text-slate-200">設定手順（30秒）：</span>Googleスプレッドシート『医学部受験・弱点管理』→「ファイル」→「共有」→「ウェブに公開」→ 対象を「<strong class="text-slate-200">アプリ連携タスク</strong>」、形式を「<strong class="text-slate-200">カンマ区切り形式（.csv）</strong>」にして公開 → URLを上に貼る。
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3.5">
+        <div class="space-y-2.5">
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-white">② 端末内PDFファイル管理（全20ファイル対応）</h2>
+            <p class="text-xs text-slate-400 mt-0.5">複数PDFを選ぶとファイル名で自動紐付けされます（端末内処理のみで外部送信なし）。</p>
+          </div>
+          <button id="btnBatchPick" type="button" class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-500 active:scale-[0.99] transition shadow-sm">複数PDFをまとめて自動紐付け</button>
+        </div>
+        <div id="libraryList" class="space-y-2.5"></div>
       </div>
     </section>
   </div>
 
-  <!-- Bottom Fixed Mobile Navigation Bar -->
-  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 z-40">
+  <!-- Hidden file inputs -->
+  <input id="hiddenSinglePdf" type="file" accept="application/pdf,.pdf" class="hidden">
+  <input id="hiddenBatchPdf" type="file" accept="application/pdf,.pdf" multiple class="hidden">
+
+  <!-- Missing PDF Prompt Modal -->
+  <div id="missingPdfModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div>
+        <div class="text-xs font-bold text-sky-400 mb-1">対象PDFファイルを選択してください</div>
+        <h3 id="missingPdfTitle" class="text-base font-bold text-white"></h3>
+        <div id="missingPdfFileBox" class="mt-2.5 px-3.5 py-2.5 rounded-xl bg-amber-950/60 border border-amber-800 text-xs font-mono font-bold text-amber-300 break-all"></div>
+        <p class="text-xs text-slate-400 mt-2">iPhoneの「ファイル」アプリから上のファイル名のPDFを選ぶと、そのまま指定ページが開きます（外部送信なし）。</p>
+      </div>
+      <div class="space-y-2.5">
+        <button id="btnPickMissingPdf" type="button" class="w-full py-3.5 rounded-xl bg-sky-500 text-slate-950 text-sm font-bold hover:bg-sky-400 active:scale-[0.99] transition">「ファイル」からこのPDFを選んで開く</button>
+        <a id="linkMissingNotebook" href="#" target="_blank" rel="noopener" class="hidden block w-full text-center py-3 rounded-xl bg-slate-800 text-indigo-300 text-sm font-bold border border-slate-700 hover:bg-slate-700 transition">代わりにNotebookLMで開く ↗</a>
+        <button id="btnCloseMissing" type="button" class="w-full py-3 rounded-xl text-sm font-semibold text-slate-400 hover:text-white">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen PDF Viewer Modal -->
+  <div id="pdfViewerModal" class="hidden fixed inset-0 z-50 bg-slate-950 flex flex-col">
+    <div class="bg-slate-900 text-white px-3 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800 shrink-0">
+      <div class="min-w-0">
+        <div id="viewerBookTitle" class="text-xs sm:text-sm font-bold truncate font-mono text-sky-300"></div>
+        <div id="viewerSubTitle" class="text-[11px] text-slate-400 truncate"></div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btnZoomOut" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 text-sm font-bold hover:bg-slate-700 active:scale-95">−</button>
+        <button id="btnZoomIn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 text-sm font-bold hover:bg-slate-700 active:scale-95">＋</button>
+        <button id="btnCloseViewer" type="button" class="px-4 py-2.5 rounded-xl bg-rose-600 text-sm font-bold hover:bg-rose-500 active:scale-95">閉じる</button>
+      </div>
+    </div>
+
+    <div id="pdfCanvasWrap" class="flex-1 overflow-auto flex justify-center items-start p-2 sm:p-4 bg-slate-950">
+      <div class="relative">
+        <div id="pdfLoadingMsg" class="hidden text-slate-300 text-sm font-semibold py-12 text-center">ページを描画中...</div>
+        <canvas id="pdfCanvas" class="bg-white shadow-2xl rounded"></canvas>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 text-white px-3 py-3 border-t border-slate-800 shrink-0 space-y-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <button id="btnPrevPage" type="button" class="px-5 py-3 rounded-xl bg-slate-800 text-sm font-bold hover:bg-slate-700 active:scale-95">◀ 前</button>
+        <div class="flex items-center gap-1.5 text-xs sm:text-sm">
+          <span class="text-slate-400">p.</span>
+          <input id="viewerPageInput" type="number" min="1" class="w-16 px-2 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-bold tabular-nums text-sm">
+          <span id="viewerPdfRealPage" class="text-[11px] text-slate-400 tabular-nums"></span>
+        </div>
+        <button id="btnNextPage" type="button" class="px-5 py-3 rounded-xl bg-slate-800 text-sm font-bold hover:bg-slate-700 active:scale-95">次 ▶</button>
+      </div>
+      <div class="flex items-center justify-between text-xs text-slate-300 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2">
+        <span>ページズレ補正（現在: <strong id="viewerOffsetVal" class="text-sky-400 tabular-nums">+0</strong>）</span>
+        <div class="flex items-center gap-2">
+          <button id="btnOffsetMinus" type="button" class="px-3.5 py-1.5 rounded-lg bg-slate-800 font-bold hover:bg-slate-700">-1</button>
+          <button id="btnOffsetPlus" type="button" class="px-3.5 py-1.5 rounded-lg bg-slate-800 font-bold hover:bg-slate-700">+1</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Mobile Navigation (Enlarged) -->
+  <nav class="fixed bottom-0 inset-x-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 z-40">
     <div class="max-w-3xl mx-auto grid grid-cols-3">
-      <button id="navTrainer" type="button" class="py-3 flex flex-col items-center justify-center text-xs font-bold text-slate-900 border-t-2 border-slate-900">
-        <span>30秒演習</span>
-      </button>
-      <button id="navManage" type="button" class="py-3 flex flex-col items-center justify-center text-xs font-medium text-slate-500 border-t-2 border-transparent hover:text-slate-800">
-        <span>問題追加・管理</span>
-      </button>
-      <button id="navInstall" type="button" class="py-3 flex flex-col items-center justify-center text-xs font-medium text-slate-500 border-t-2 border-transparent hover:text-slate-800">
-        <span>ホーム画面追加</span>
-      </button>
+      <button id="navTasks" type="button" class="py-4 text-sm font-bold text-sky-400 border-t-2 border-sky-400">今日のタスク</button>
+      <button id="navSearch" type="button" class="py-4 text-sm font-medium text-slate-400 border-t-2 border-transparent hover:text-slate-200">教材検索</button>
+      <button id="navLibrary" type="button" class="py-4 text-sm font-medium text-slate-400 border-t-2 border-transparent hover:text-slate-200">PDF・同期設定</button>
     </div>
   </nav>
 
   <script>
-    const DEFAULT_PROBLEMS = [
-      {
-        id: 'CT-WEAK-CHEM-011',
-        subj: '化学',
-        src: '共通テスト対策 化学演習 第6問 問3・4（気液平衡）',
-        prompt: '3.6L容器にエタノール0.10molを入れ87℃から30℃へ冷却したときの圧力決定手順、および凝縮が始まる温度(℃)を蒸気圧表から求める手順を述べよ。',
-        rubric: [
-          { label: 'すべて気体と仮定した仮想圧 P_仮 を計算する', weight: 35, keywords: ['仮想', 'すべて気体', '全気体', 'pv=nrt', '状態方程式', 'p仮', 'p_仮', '仮定'] },
-          { label: '仮想圧と飽和蒸気圧 P0 を比較し、P_仮 > P0 なら凝縮し圧力 = P0 と確定する', weight: 35, keywords: ['飽和蒸気圧', 'p0', '比較', '大小', '凝縮', '超え', '大きい'] },
-          { label: '凝縮開始温度は「仮想圧直線 P = kT」と「蒸気圧曲線」の交点（表の大小逆転区間）から求める', weight: 30, keywords: ['交点', '直線', '曲線', '逆転', '70', '80', '比例', '温度'] }
-        ],
-        model: '①まず30℃ですべて気体と仮定した圧力P_仮(=7.0×10^4 Pa)を算出し、30℃の飽和蒸気圧P0(=1.1×10^4 Pa)と比較する。②P_仮 > P0なので凝縮が起こり、圧力は飽和蒸気圧1.1×10^4 Paに確定する。③凝縮開始温度は仮想圧直線P=8.3×10^4×(273+t)/360と蒸気圧曲線の交点（70℃でP_仮>P0、80℃でP_仮<P0の間）から求める。',
-        ifThen: '【If】蒸気圧・ピストン・冷却の問題を見たら → 【Then】まず「すべて気体と仮定したP_仮 vs 飽和蒸気圧P0」の大小比較を1行書く'
-      },
-      {
-        id: 'CT-WEAK-CHEM-001',
-        subj: '化学',
-        src: '共通テスト形式 化学 第2問 問5b [13]（ヨウ素滴定）',
-        prompt: 'KIO3(式量214)1.07gと過剰のKIを酸性下で反応させて1Lとした溶液40.0mLでSn2+をSn4+へ滴定した。合金中のSnの物質量を求める際のIO3-とI2のモル比と立式手順を述べよ。',
-        rubric: [
-          { label: 'IO3- と I- の酸化還元反応から IO3- : I2 = 1 : 3 を導く（I- 側由来の I2 を含める）', weight: 45, keywords: ['1:3', '3倍', '3mol', '3', 'io3', 'i-', '酸化還元', '電子'] },
-          { label: 'KIO3の物質量(1.07/214)からI2濃度を出し、40.0/1000を掛けて滴定に用いたI2物質量を求める', weight: 30, keywords: ['40', '1000', '214', '濃度', '1l', 'モル', '掛け'] },
-          { label: 'Sn2+ → Sn4+ + 2e- と I2 + 2e- → 2I- より n(Sn) = n(I2)（1:1）と立式する', weight: 25, keywords: ['sn', '1:1', '等しい', '2e', '電子'] }
-        ],
-        model: '2IO3- + 10I- + 12H+ → 6I2 + 6H2O より、IO3- 1molからI2は「3mol」生じる（I-側から生じるI2を見落とさない）。n(I2)濃度 = 3×(1.07/214) = 1.50×10^-2 mol/L。40mL中のI2物質量 = 6.00×10^-4 mol = n(Sn)。',
-        ifThen: '【If】IO3- と KI の酸性下ヨウ素遊離反応を見たら → 【Then】「IO3- 1mol → I2 3mol（I-側も合算）」を即座に確認する'
-      },
-      {
-        id: 'CT-WEAK-CHEM-002',
-        subj: '化学',
-        src: '共通テスト形式 化学 第4問 問3・4（鉛蓄電池・メタネーション）',
-        prompt: '鉛蓄電池の放電で負極が48g増加したときの電解液質量変化の符号と値、および CO2 + 4H2 → CH4 + 2H2O(液) で CH4 1molを得る必要電気量（電子数）の決定手順を述べよ。',
-        rubric: [
-          { label: '鉛蓄電池は e- 2molあたり負極 +96g・電解液 -160g（H2SO4 2mol減・H2O 2mol増）を使う', weight: 40, keywords: ['96', '160', '2mol', 'h2so4', '硫酸', '負極', '減'] },
-          { label: '負極 +48g（e- 1mol）なので電解液は「減少（マイナス）」で -80g とする', weight: 30, keywords: ['-80', '80', 'マイナス', '減少', '1mol', '半分'] },
-          { label: 'CH4 1molには H2 4mol → e- 8mol が必要（Q = 8F）と電子数を正確に数える', weight: 30, keywords: ['8mol', '8f', '8', '4mol', '電子', 'ファラデー'] }
-        ],
-        model: '鉛蓄電池はe- 2molあたり負極(Pb→PbSO4)+96g、電解液(2H2SO4消費+2H2O生成)-160g。+48gはe- 1mol分なので電解液は-80g。メタネーションはH2 4mol生成にe- 8mol必要なので電気量は8×9.65×10^4 C。',
-        ifThen: '【If】鉛蓄電池の質量変化が出たら → 【Then】「e- 2mol基準：負極+96g／正極+64g／液-160g」の3点セットを余白に書く'
-      },
-      {
-        id: 'CT-WEAK-CHEM-006',
-        subj: '化学',
-        src: '第2回 全統共テ模試 化学 第2問 問4b・c（2室ピストン気液平衡）',
-        prompt: '飽和蒸気圧8.0×10^4 Paの2-プロパノール(A室)と4.0×10^4 Paの水(B室)を仕切り板で分け、圧力6.0×10^4 Paにしたときの各室の状態と、P対(VA+VB)グラフの曲線の凸の向きを述べよ。',
-        rubric: [
-          { label: 'A室は外圧6.0 < 飽和蒸気圧8.0なので「気体のみ」と判定する', weight: 35, keywords: ['a室', '気体のみ', '気体', '未満', '小さい', '8.0'] },
-          { label: 'B室は外圧6.0 > 飽和蒸気圧4.0なので「すべて凝縮し液体のみ」と判定する', weight: 35, keywords: ['b室', '液体のみ', '液体', '凝縮', '大きい', '超え', '4.0'] },
-          { label: '気体のみの区間はボイルの法則 P=nRT/V（反比例）なので「下に凸」の曲線、凝縮区間は水平線となる', weight: 30, keywords: ['下に凸', '反比例', 'ボイル', '水平', '一定'] }
-        ],
-        model: '圧力6.0×10^4 Paは2-プロパノール(8.0)未満なのでA室は気体のみ、水(4.0)超なのでB室は全量凝縮し液体のみ。気体のみの区間はP=nRT/Vの反比例グラフ（下に凸）、各物質の気液共存区間は圧力一定の水平線になる。',
-        ifThen: '【If】気液平衡のP-Vグラフを見たら → 【Then】「気体のみ＝反比例（下に凸）」「気液共存＝水平線」の2ルールで即切る'
-      },
-      {
-        id: 'CT-WEAK-CHEM-007',
-        subj: '化学',
-        src: '第2回 全統共テ模試 化学 第3問 問2・4b（空気電池・平衡移動）',
-        prompt: 'マグネシウム空気電池(2Mg+O2+2H2O→2Mg(OH)2)で全体質量が1.6g増加したときの流れた電気量、および CO+H2O(気)⇔CO2+H2 で圧力を2倍にしたときの体積比の求め方を述べよ。',
-        rubric: [
-          { label: '質量増加1.6g＝吸収したO2の質量（1.6/32 = 0.050mol）と捉える', weight: 35, keywords: ['o2', '酸素', '32', '0.05', '吸収', '増加'] },
-          { label: 'O2 + 2H2O + 4e- → 4OH- より電子はO2の「4倍」(0.20mol)として Q = 0.20F を計算する', weight: 35, keywords: ['4倍', '4e', '0.2', '4', 'ファラデー'] },
-          { label: 'CO+H2O⇔CO2+H2 は両辺2molで分子数変化なし→圧力2倍でも平衡移動せず体積は1/2倍', weight: 30, keywords: ['分子数', '変化なし', '移動しない', '2mol', '0.5', '1/2', '半分'] }
-        ],
-        model: '質量増加1.6gは取り込んだO2(0.050mol)分。O2 1molあたりe- 4molなので0.050×4=0.20molの電子が流れ、Q=0.20×9.65×10^4 C。また両辺の気体分子数が2mol=2molで等しいため、加圧しても平衡移動せずボイルの法則通りV2=0.50V1。',
-        ifThen: '【If】空気電池の質量増加を見たら → 【Then】「増加分＝吸収O2」「e-＝O2の4倍」を必ず式に書く'
-      },
-      {
-        id: 'ERR-096',
-        subj: '数学',
-        src: '共テ直前演習 第1回 数学ⅠA 第3問(2)(3)（図形の性質・五心）',
-        prompt: '鈍角三角形での外心O・重心G・垂心Hの内外位置を述べよ。また ∠B=∠C, ∠A<60°, AH=6, BC=8 で(1)の誘導 OM:AH=1:2 があるとき、OGと比AE:ECの求め方を述べよ。',
-        rubric: [
-          { label: '鈍角三角形では外心Oと垂心Hが外部（重心Gは常に内部）にある', weight: 35, keywords: ['o', 'h', '外心', '垂心', '外部', '重心', '内部'] },
-          { label: '(1)の誘導 OM:AH=1:2 から OM=3 を出し、三平方で OA=OB=5 → OH・OG（オイラー線 OG:GH=1:2）へ繋ぐ', weight: 35, keywords: ['om', '1:2', '3', '三平方', '5', 'オイラー', '誘導'] },
-          { label: 'BHとACの交点Eの比 AE:EC はメネラウスの定理（または相似）で立式する', weight: 30, keywords: ['メネラウス', '相似', 'チェバ', '比', '3:2'] }
-        ],
-        model: '鈍角三角形では外心O・垂心Hが外部。誘導OM:AH=1:2よりOM=3、BM=4から三平方でOA=5。AH=6よりOH=1、オイラー線(OG:GH=1:2)でOG=1/3。AE:ECは△ACMと直線BHにメネラウスの定理を適用して3:2。',
-        ifThen: '【If】共テ図形で(1)に辺の比の誘導が出たら → 【Then】(2)(3)で自力計算に走る前に必ず(1)の比を書き込んで使う'
-      },
-      {
-        id: 'ERR-097',
-        subj: '数学',
-        src: '共テ直前演習 第1回 数学ⅠA 第4問(3)（場合の数と確率）',
-        prompt: '1,2,3の球から各1個引き、異なれば大きい数の方がその数だけ進み、同じなら両者1段進む試行を2回行う。2回後に太郎が3段目で花子より上にいる確率で(0段,3段)の組に掛ける確率の求め方を述べよ。',
-        rubric: [
-          { label: '太郎が3段かつ「花子より上」となるには、もう1回で「太郎0段かつ花子2段以下」が必要と条件を絞る', weight: 40, keywords: ['花子', '2段以下', 'より上', '3段未満', '条件'] },
-          { label: '太郎0段の全確率P(0)をそのまま掛けず、花子も3段になり同点となる(1,3)(2,3)を除外する', weight: 40, keywords: ['同点', '除外', '1,3', '2,3', '3段', '除く'] },
-          { label: '条件を満たすのは(太郎1, 花子2)の1通り＝1/9と確定する', weight: 20, keywords: ['1/9', '1通り', '1,2'] }
-        ],
-        model: '太郎が3段目で「花子より上」にいるには、0段の回に花子が3段進んではいけない。太郎0段の3通り(1,2)(1,3)(2,3)から同点になる(1,3)(2,3)を除外し、(1,2)の1通り＝1/9だけを掛ける。',
-        ifThen: '【If】確率で「AがBより上（勝つ）」と出たら → 【Then】全事象を掛ける前に「同点・引き分けケースの除外」を指差し確認する'
-      },
-      {
-        id: 'ERR-074',
-        subj: '数学',
-        src: 'Focus Gold 数学B+C p.B1-48 例題B1.27（(-1)^nを含む数列の和）',
-        prompt: '(-1)^n を含む級数（符号が交互に入れ替わる数列の和 S_n）を求める際の基本方針と検算手順を述べよ。',
-        rubric: [
-          { label: 'nが偶数(n=2m)と奇数(n=2m-1または2m+1)で必ず場合分けする', weight: 45, keywords: ['偶奇', '偶数', '奇数', '2m', '場合分け'] },
-          { label: '隣り合う2項を1ペア（2k-1番目と2k番目）にまとめてΣ計算する', weight: 35, keywords: ['ペア', '2項', '組', 'まとめ', 'シグマ', 'Σ'] },
-          { label: '答えが出たら必ず n=1, 2（または3）を代入して具体的和と一致するか検算する', weight: 20, keywords: ['検算', 'n=1', 'n=2', '代入'] }
-        ],
-        model: '(-1)^nを含む和はn=2m（偶数）とn=2m-1（奇数）に場合分けし、2項ずつペアにしてΣ計算する。奇数の場合は偶数和S_{2m}から末項を引く（またはS_{2m-2}に末項を足す）。最後に必ずn=1,2を代入して検算する。',
-        ifThen: '【If】数列の和に (-1)^n を見たら → 【Then】即座に「nの偶奇場合分け＋2項ペア化＋n=1,2代入検算」の3手順を踏む'
-      },
-      {
-        id: 'ERR-076',
-        subj: '物理',
-        src: '良問の風 物理 p.32 問47（鉛直ばね振り子・離れる条件）',
-        prompt: '鉛直ばね上に載せた2物体が単振動し、上の物体が下の物体から「離れる条件」を立てる際の座標設定と立式手順を述べよ。',
-        rubric: [
-          { label: '「自然長の位置」と「つり合いの位置（振動中心）」を明確に描き分ける', weight: 35, keywords: ['自然長', '振動中心', 'つり合い', '描き分け', '区別'] },
-          { label: '垂直抗力 N = 0 となる瞬間（ばねが自然長になる位置・加速度が下向きg）を離れる条件とする', weight: 40, keywords: ['n=0', '垂直抗力', '0', '自然長', '加速度', 'g'] },
-          { label: '振幅Aが「振動中心から自然長までの距離」以上（A ≧ x0）になる条件で立式する', weight: 25, keywords: ['振幅', '距離', 'x0', '以上', '超える'] }
-        ],
-        model: '鉛直ばねでは「自然長位置」と「振動中心（つり合い位置）」を必ず別々に図示する。上の物体が離れる条件は垂直抗力N=0、すなわち運動方程式より加速度a=-g（自然長の位置）を通過すること。よって振幅Aが中心〜自然長距離以上になれば離れる。',
-        ifThen: '【If】鉛直ばね振り子で「離れる条件」を見たら → 【Then】「自然長」と「振動中心」の2本線を必ず図に描き、N=0（自然長通過）で立式する'
-      },
-      {
-        id: 'ERR-077',
-        subj: '物理',
-        src: '良問の風 物理 p.33 問48(4)（単振動の通過速さ）',
-        prompt: 'ばね定数k・質量Mの単振動で、振動中心から変位xの位置を通過する速さwを最速で求めるための立式方針を述べよ。',
-        rubric: [
-          { label: '振動中心を基準とした「単振動のエネルギー保存則」を立てる', weight: 50, keywords: ['エネルギー保存', '振動中心', '単振動', '1/2'] },
-          { label: '1/2 M w^2 + 1/2 k x^2 = 1/2 k A^2（または最大速度 v_max = Aω）と立式する', weight: 35, keywords: ['a^2', 'ka^2', 'kx^2', 'aω', '最大速度', '振幅'] },
-          { label: '重力による位置エネルギーを二重計上しない（振動中心基準なら弾性項のみで閉じる）', weight: 15, keywords: ['重力', '二重', '不要', '中心基準', 'mgh'] }
-        ],
-        model: '振動中心を原点とする単振動のエネルギー保存則「1/2 M w^2 + 1/2 k x^2 = 1/2 k A^2」を立てれば、重力項を考えずに最短で通過速さwが求まる（またはv_max = Aωから導出）。',
-        ifThen: '【If】単振動の途中位置での速さを問われたら → 【Then】自然長基準ではなく「振動中心基準の 1/2Mv^2 + 1/2kx^2 = 1/2kA^2」で一発立式する'
-      },
-      {
-        id: 'ERR-102',
-        subj: '地理',
-        src: '後期中間考査 地理探究 大問1-4・5-8・5-10（気候割合・Cfb vs Cs・北欧）',
-        prompt: '大陸別気候割合表から亜寒帯(D)と南半球を特定する手順、CfbとCsの雨温図の区別、および北欧3国（ノルウェー等）の低地割合と冬気温の判定基準を述べよ。',
-        rubric: [
-          { label: '南半球（アフリカ・南米・豪州）は亜寒帯(D)が 0.0% であることから特定する', weight: 35, keywords: ['0', '亜寒帯', '南半球', 'ない', 'ゼロ'] },
-          { label: 'Cfbは年中降水・夏涼しい(22℃未満)、Csは夏に明瞭な乾燥（少雨）で区別する', weight: 35, keywords: ['夏乾燥', '夏少雨', '年中', '20', '22', 'cfb', 'cs'] },
-          { label: 'ノルウェーは山がちで標高200m以下が最小、かつ暖流（北大西洋海流）で冬が温暖（0℃前後）', weight: 30, keywords: ['ノルウェー', '山', '最小', '暖流', '北大西洋', '冬'] }
-        ],
-        model: '①南半球の大陸は亜寒帯0.0%を手掛かりに特定する。②Cfbは年中降水・最暖月22℃未満、Csは夏乾燥・冬多雨。③ノルウェーはスカンディナビア山脈で200m以下割合が最小だが、北大西洋海流（暖流）により冬気温が最も高い。',
-        ifThen: '【If】大陸別気候表・欧州雨温図を見たら → 【Then】「南半球＝D 0.0%」「Cs＝夏凹み」「ノルウェー＝山＋暖流」の3基準で即切り分ける'
-      },
-      {
-        id: 'ERR-103',
-        subj: '地理',
-        src: '後期中間考査 地理探究 大問5-7・2-8（観光収支軸・南米降水）',
-        prompt: '横軸「国際観光収入」・縦軸「国際観光支出」の散布図からフランスを特定する手順、および南米ブラジル北東部（セルトン）沖合の海流とチリ南部多雨の要因を述べよ。',
-        rubric: [
-          { label: '横軸＝収入・縦軸＝支出を確認し、観光黒字（収入＞支出）のフランスを「右下」に特定する', weight: 40, keywords: ['横軸', '縦軸', '右下', '収入', '黒字', '超過'] },
-          { label: 'ブラジル北東部（セルトン）沖合は「暖流（ブラジル海流）」であり寒流ではないと見抜く', weight: 35, keywords: ['暖流', 'ブラジル海流', '寒流ではない', 'セルトン'] },
-          { label: 'チリ南部は「偏西風」がアンデス山脈にぶつかり多雨となる', weight: 25, keywords: ['偏西風', 'チリ', 'アンデス', '多雨'] }
-        ],
-        model: '散布図はまず横軸・縦軸の定義を指差し確認。横＝収入・縦＝支出ならフランスは収入超過の右下（ドイツは支出超過の左上）。ブラジル北東部沖は暖流（ブラジル海流）のため「寒流」記述は誤り。チリ南部は偏西風で多雨。',
-        ifThen: '【If】2軸散布図（観光・貿易等）を見たら → 【Then】点を見る前にまず「横軸と縦軸のラベル」を丸で囲んで黒字側を確定する'
-      },
-      {
-        id: 'CT-WEAK-JPN-001',
-        subj: '国語',
-        src: '直前演習 国語 第1回 第4問（古文『十訓抄』）',
-        prompt: '古文『十訓抄』の「春は三十日やはある」の反語が突っ込んでいる対象、反実仮想の選択肢で過剰解釈を切る基準、および『俊頼髄脳』と『十訓抄』の公任へのスタンスの違いを述べよ。',
-        rubric: [
-          { label: '「春は三十日やはある」は春は3か月（90日）あるのに3月だけに限定した歌への非難と捉える', weight: 35, keywords: ['3か月', '三か月', '90', '30日', '三月', '限定', '非難'] },
-          { label: '「論破できたはず」等の本文に根拠がない反実仮想・過剰解釈の選択肢を即切る', weight: 35, keywords: ['本文', '根拠', '過剰解釈', '論破', 'ない'] },
-          { label: '『俊頼髄脳』は長能への配慮を説き、『十訓抄』は行成の逸話と合わせて「言葉を慎む教訓」として機能', weight: 30, keywords: ['配慮', '言葉', '慎む', '教訓', '行成', '批判'] }
-        ],
-        model: '①「春は三十日やはある（いや3か月ある）」と三月に限定した詠みぶりを公任が非難。②「論破できたはず」のような本文外の推測・過剰解釈は即除外。③『俊頼髄脳』は執心深い長能への配慮、『十訓抄』は言葉を慎む教訓として機能している。',
-        ifThen: '【If】古文・評論の選択肢に「〜できたはず」「客観的評価」など強い断定を見たら → 【Then】本文の直接根拠がなければ過剰解釈として即切る'
-      },
-      {
-        id: 'ERR-092',
-        subj: '国語',
-        src: '河合塾『古典 完全攻略』漢文 第2問 問3（雖の返り点）',
-        prompt: '漢文「雖位総鼎司而委事僚寀」において、「雖」の返り点をレ点にせず三・二・一で返るべき文法上の判断基準を述べよ。',
-        rubric: [
-          { label: '「雖（いへども）」は接続詞であり、直後の語が動詞ではなく主語（名詞「位」）か確認する', weight: 50, keywords: ['主語', '名詞', '位', '接続詞', '直後'] },
-          { label: '直後が主語＋述語の節構造なので、節の末尾の動詞（述語）から一二点（三二一）で返る', weight: 50, keywords: ['節', '末尾', '動詞', '述語', '一二', '三二一', 'レ点ではない'] }
-        ],
-        model: '「雖」の直後が主語（名詞「位」）であり、主語＋動詞＋目的語の節全体を受けるため、直後の名詞へレ点で返るのではなく、節末尾の述語から一二点（三・二・一）で「雖」へ返る。',
-        ifThen: '【If】漢文で「雖」「使」「為」の返り点問題を見たら → 【Then】直後が「名詞（主語）か動詞か」を確認し、名詞ならレ点ではなく節末から一二点で返す'
-      },
-      {
-        id: 'ERR-108',
-        subj: '英語',
-        src: 'Reach 40 第1回テストA 第5問（複数資料クロス照合）',
-        prompt: '応募要項・4つのレシピ・運営メールを照合する問題で、(1)4品共通条件、(2)対象年齢不適で除外された1品、(3)メールで筆者本人に要請された行動、を落とさず特定する手順を述べよ。',
-        rubric: [
-          { label: '応募要項の数値・年齢条件（4歳以上全員＝高齢者含む、40分以内等）を最初にマークする', weight: 35, keywords: ['年齢', '高齢者', '40分', '要項', '条件', 'マーク'] },
-          { label: '4レシピを表のように縦横チェックし、共通食材の有無・時間・対象不適（hard for older adults）を照合する', weight: 35, keywords: ['照合', '高齢者', 'hard', '共通', '食材', '表', '全件'] },
-          { label: 'メールの要請は「主語（you＝筆者本人か他者か）」と「目的語（追加コメント等）」を正確に確認する', weight: 30, keywords: ['主語', 'you', '本人', '目的語', '言い換え', 'コメント'] }
-        ],
-        model: '①要項の制約条件（4歳以上全員＝高齢者含む・40分以内）に印をつける。②4レシピを条件ごとに全件照合し、hard for older adults（Granola Bars）の除外を見抜く。③メールの要請は主語（本人かチームか）と目的語の言い換えを厳密に確認する。',
-        ifThen: '【If】共テ英語Rで複数資料（要項＋一覧＋メール）を見たら → 【Then】「対象年齢の端（幼児・高齢者）」と「メールの主語you」を必ず印付けして照合する'
-      },
-      {
-        id: 'ERR-109',
-        subj: '英語',
-        src: 'Reach 40 第1回テストA 第3問 問1（時系列・感情変化）',
-        prompt: '記事中の登場人物の感情変化（6段階）を正しい時系列に並べ替える際、本文の記述順に惑わされて逆転するミスを防ぐ手順を述べよ。',
-        rubric: [
-          { label: '過去完了形（had + p.p.）や ever since / before などの時制・時間表現に印をつける', weight: 50, keywords: ['過去完了', 'had', '時制', 'ever since', 'before', '時間'] },
-          { label: '本文の「書かれている順番」ではなく、実際の出来事の時系列（過去完了はそれより前）に並べ直す', weight: 50, keywords: ['記述順', '時系列', '前', '順番', '逆転', '出来事'] }
-        ],
-        model: 'relievedの引用直後に過去完了 had been worried が書かれていたように、英語記事は回想で時系列が前後する。過去完了(had + p.p.)や時間標識に印をつけ、必ず「記述順」ではなく「実際の時間軸」で並べ替える。',
-        ifThen: '【If】英語Rの時系列並べ替え問題を見たら → 【Then】過去完了（had + p.p.）に印をつけ、「書かれた順ではなく実際の時間軸で前」へ戻す'
-      }
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    const NB_MAP = {
+      fg_math3: 'https://gemini.google.com/notebook/062485c3-065e-4f45-8adf-8f5fb525e911',
+      fg_mathbc: 'https://gemini.google.com/notebook/2a5d5b6e-4275-4d34-8dc2-2c534601ce6c',
+      ryomon: 'https://gemini.google.com/notebook/e46114b8-65ef-4bab-9327-418593e92933',
+      meimon: 'https://gemini.google.com/notebook/06b9b01a-a310-47c8-850d-6eaecd69d6b4',
+      excel_chem: 'https://gemini.google.com/notebook/b7950b1f-086f-449b-aba5-767ca153c17f',
+      jumon: 'https://gemini.google.com/notebook/0aed0dc7-a47a-40ad-a052-2c847b59fc2a',
+      kyote_geo: 'https://gemini.google.com/notebook/26820978-f25d-409d-80ef-9261353208e2',
+      eng_read: 'https://gemini.google.com/notebook/3fd86040-4438-498f-9578-d9425c9722fa'
+    };
+
+    const PDF_FILES = [
+      { fileName: 'Focus Gold数3 vol.1.pdf', bookKey: 'fg_math3', bookName: 'Focus Gold 数3', subj: '数学', note: '関数・極限' },
+      { fileName: 'Focus Gold数3 vol.2.pdf', bookKey: 'fg_math3', bookName: 'Focus Gold 数3', subj: '数学', note: '微分法' },
+      { fileName: 'Focus Gold数3積分 例題.pdf', bookKey: 'fg_math3', bookName: 'Focus Gold 数3', subj: '数学', note: '積分 例題' },
+      { fileName: 'Focus Gold数3積分 step up.章末問題.pdf', bookKey: 'fg_math3', bookName: 'Focus Gold 数3', subj: '数学', note: '積分 Step Up・章末' },
+      { fileName: 'FG  数BC 数列.pdf', bookKey: 'fg_mathbc', bookName: 'FG 数BC', subj: '数学', note: '数列' },
+      { fileName: 'FG  数BC ベクトル.pdf', bookKey: 'fg_mathbc', bookName: 'FG 数BC', subj: '数学', note: 'ベクトル' },
+      { fileName: 'FG  数BC 複素数、式と曲線.pdf', bookKey: 'fg_mathbc', bookName: 'FG 数BC', subj: '数学', note: '複素数・式と曲線' },
+      { fileName: '良問の風vol.1.pdf', bookKey: 'ryomon', bookName: '良問の風', subj: '物理', note: '力学・熱・波動' },
+      { fileName: '良問の風vol.2.pdf', bookKey: 'ryomon', bookName: '良問の風', subj: '物理', note: '電磁気・原子' },
+      { fileName: '名門の森vol.1.pdf', bookKey: 'meimon', bookName: '名門の森', subj: '物理', note: '力学・熱・波動Ⅰ' },
+      { fileName: '名門の森vol.2.pdf', bookKey: 'meimon', bookName: '名門の森', subj: '物理', note: '波動Ⅱ・電磁気・原子' },
+      { fileName: 'エクセル vol.1.pdf', bookKey: 'excel_chem', bookName: '化学エクセル', subj: '化学', note: '理論前半' },
+      { fileName: 'エクセルvol.2.pdf', bookKey: 'excel_chem', bookName: '化学エクセル', subj: '化学', note: '理論後半・電池電解' },
+      { fileName: 'エクセルvol.3.pdf', bookKey: 'excel_chem', bookName: '化学エクセル', subj: '化学', note: '無機・有機' },
+      { fileName: 'エクセル 高分子.pdf', bookKey: 'excel_chem', bookName: '化学エクセル', subj: '化学', note: '高分子' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', bookName: '化学重要問題集', subj: '化学', note: '理論・電池電解' },
+      { fileName: '重要問題集vol.2.pdf', bookKey: 'jumon', bookName: '化学重要問題集', subj: '化学', note: '無機・有機・高分子' },
+      { fileName: '地理 2024.pdf', bookKey: 'kyote_geo', bookName: '共テ 地理', subj: '地理', note: '2024本試験' },
+      { fileName: '地理 過去問 2025.pdf', bookKey: 'kyote_geo', bookName: '共テ 地理', subj: '地理', note: '2025本試験' },
+      { fileName: '前期末.pdf', bookKey: 'eng_read', bookName: '英語長文演習資料', subj: '英語', note: '英語長文' }
     ];
 
-    const STORAGE_KEY = 'strategy_trainer_srs_v1';
-    const CUSTOM_KEY = 'strategy_trainer_custom_v1';
-    const SRS_STEPS = [
-      { stage: 0, label: '初回解き直し (+1日)', days: 1, badge: 'bg-rose-100 text-rose-800' },
-      { stage: 1, label: '30秒チェック① (+3日)', days: 3, badge: 'bg-amber-100 text-amber-900' },
-      { stage: 2, label: '30秒チェック② (+7日)', days: 7, badge: 'bg-indigo-100 text-indigo-800' },
-      { stage: 3, label: '卒業（定着済）', days: 21, badge: 'bg-emerald-100 text-emerald-800' }
+    function normName(s) {
+      return (s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
+    }
+
+    const FILE_BY_NORM = {};
+    PDF_FILES.forEach(f => { FILE_BY_NORM[normName(f.fileName)] = f; });
+
+    function resolveFileMeta(fileName, bookKey) {
+      if (fileName && FILE_BY_NORM[normName(fileName)]) return FILE_BY_NORM[normName(fileName)];
+      if (fileName) return { fileName, bookKey: bookKey || 'other', bookName: fileName.replace(/\.pdf$/i, ''), subj: '', note: '' };
+      const byBook = PDF_FILES.find(f => f.bookKey === bookKey);
+      return byBook || { fileName: 'ファイル名未指定', bookKey: bookKey || 'other', bookName: bookKey || '', subj: '', note: '' };
+    }
+
+    const DEFAULT_TASKS = [
+      { date: '2026-11-20', slot: '【午前】', order: 1, subj: '数学', bookKey: 'fg_math3', bookName: 'Focus Gold 数3', problem: '例題158（置換積分 King property）', page: 345, criteria: '制限時間20分で置換区間変換表を明記し完答', prio: 'A', nb: NB_MAP.fg_math3, fileName: 'Focus Gold数3積分 例題.pdf' },
+      { date: '2026-11-20', slot: '【午後】', order: 2, subj: '物理', bookKey: 'ryomon', bookName: '良問の風', problem: '問47(1)〜(3)（鉛直ばね単振動）', page: 32, criteria: '自然長と振動中心を描き分け白紙完答', prio: 'A', nb: NB_MAP.ryomon, fileName: '良問の風vol.1.pdf' },
+      { date: '2026-11-20', slot: '【放課後】', order: 3, subj: '化学', bookKey: 'jumon', bookName: '化学重要問題集', problem: '問題142(2)(3)（鉛蓄電池・Li電池）', page: 80, criteria: '全体反応式から活物質質量を正確に立式し完答', prio: 'A', nb: NB_MAP.jumon, fileName: '重要問題集vol.1.pdf' },
+      { date: '2026-11-20', slot: '【放課後】', order: 4, subj: '数学', bookKey: 'fg_mathbc', bookName: 'FG 数BC', problem: '例題C1.74（平面への垂線の足）', page: 328, criteria: 's+t+u=1と直交条件で点H座標を20分以内に完答', prio: 'A', nb: NB_MAP.fg_mathbc, fileName: 'FG  数BC ベクトル.pdf' }
     ];
 
-    function loadJson(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (raw) return JSON.parse(raw);
-      } catch (e) {}
-      return fallback;
+    const BUILTIN_INDEX = [
+      { fileName: 'Focus Gold数3積分 例題.pdf', bookKey: 'fg_math3', problem: '例題154・練習154（数Ⅲ定積分）', page: 336, tags: '数3 積分' },
+      { fileName: 'Focus Gold数3積分 例題.pdf', bookKey: 'fg_math3', problem: '例題158（置換積分 King property）', page: 345, tags: '数3 積分 置換' },
+      { fileName: 'Focus Gold数3積分 step up.章末問題.pdf', bookKey: 'fg_math3', problem: 'Step Up 14・15・16・17（三角関数・指数分数定積分）', page: 352, tags: '数3 積分 数列 微分逆検算' },
+      { fileName: 'Focus Gold数3積分 step up.章末問題.pdf', bookKey: 'fg_math3', problem: 'Step Up 23・24・26（定積分と微分）', page: 391, tags: '数3 積分 微分' },
+      { fileName: 'Focus Gold数3積分 step up.章末問題.pdf', bookKey: 'fg_math3', problem: '章末問題3・4（チェビシェフ・減衰曲線積分）', page: 393, tags: '数3 積分 章末' },
+      { fileName: 'FG  数BC 数列.pdf', bookKey: 'fg_mathbc', problem: '例題B1.27・練習B1.27（(-1)^n 偶奇場合分けの和）', page: 48, tags: '数列 和 偶奇' },
+      { fileName: 'FG  数BC 数列.pdf', bookKey: 'fg_mathbc', problem: '例題B1.32（階差数列）', page: 62, tags: '数列 階差' },
+      { fileName: 'FG  数BC 数列.pdf', bookKey: 'fg_mathbc', problem: '例題B1.47（漸化式と平面分割）', page: 92, tags: '数列 漸化式' },
+      { fileName: 'FG  数BC 数列.pdf', bookKey: 'fg_mathbc', problem: '例題B1.63（数学的帰納法）', page: 112, tags: '数列 帰納法' },
+      { fileName: 'FG  数BC ベクトル.pdf', bookKey: 'fg_mathbc', problem: '例題C1.74（平面への垂線の足）', page: 328, tags: '空間ベクトル 垂線' },
+      { fileName: 'FG  数BC ベクトル.pdf', bookKey: 'fg_mathbc', problem: '例題C1.79（球面と平面の交線・東北大改）', page: 336, tags: '空間ベクトル 球面 東北大' },
+      { fileName: '良問の風vol.1.pdf', bookKey: 'ryomon', problem: '問21・22（力学）', page: 17, tags: '力学' },
+      { fileName: '良問の風vol.1.pdf', bookKey: 'ryomon', problem: '問38（慣性力と剛体の転倒条件）', page: 26, tags: '力学 剛体 慣性力 モーメント' },
+      { fileName: '良問の風vol.1.pdf', bookKey: 'ryomon', problem: '問47（鉛直ばね単振動・離れる条件）', page: 32, tags: '力学 単振動 ばね' },
+      { fileName: '良問の風vol.1.pdf', bookKey: 'ryomon', problem: '問48（単振動の通過速さ・エネルギー保存）', page: 33, tags: '力学 単振動' },
+      { fileName: '良問の風vol.1.pdf', bookKey: 'ryomon', problem: '問73・74*・75（正弦波の式・自由端/固定端反射）', page: 51, tags: '波動 正弦波 定在波' },
+      { fileName: '良問の風vol.2.pdf', bookKey: 'ryomon', problem: '問105（コンデンサー）', page: 71, tags: '電磁気 コンデンサー' },
+      { fileName: '良問の風vol.2.pdf', bookKey: 'ryomon', problem: '問108・109（コンデンサーと誘電体）', page: 73, tags: '電磁気 コンデンサー 誘電体' },
+      { fileName: '良問の風vol.2.pdf', bookKey: 'ryomon', problem: '問129（斜面上の金属棒の電磁誘導）', page: 86, tags: '電磁気 電磁誘導' },
+      { fileName: '良問の風vol.2.pdf', bookKey: 'ryomon', problem: '問130*・131（回転導体棒・正方形コイルの磁束変化）', page: 87, tags: '電磁気 電磁誘導' },
+      { fileName: '良問の風vol.2.pdf', bookKey: 'ryomon', problem: '第140問・第141問（荷電粒子らせん運動・ホール効果）', page: 94, tags: '電磁気 ローレンツ力 ホール効果' },
+      { fileName: '名門の森vol.2.pdf', bookKey: 'meimon', problem: '第16問（コンデンサー電場・電位グラフ）', page: 57, tags: '電磁気 コンデンサー' },
+      { fileName: '名門の森vol.2.pdf', bookKey: 'meimon', problem: '第43問（ソレノイド分割接続と銅リング）', page: 137, tags: '電磁気 電磁誘導' },
+      { fileName: '名門の森vol.2.pdf', bookKey: 'meimon', problem: '第46問（ばね付き導体棒とコイルLの単振動・東北大）', page: 146, tags: '電磁気 単振動 東北大' },
+      { fileName: '名門の森vol.2.pdf', bookKey: 'meimon', problem: '第50問（ホール効果）', page: 158, tags: '電磁気 ホール効果' },
+      { fileName: '名門の森vol.2.pdf', bookKey: 'meimon', problem: '第51問（電磁場中の荷電粒子・慶應大）', page: 161, tags: '電磁気 ローレンツ力' },
+      { fileName: '名門の森vol.1.pdf', bookKey: 'meimon', problem: '第61問（熱力学・水圧変化と揚水サイクル）', page: 174, tags: '熱力学' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', problem: '準62（混合気体の体積・気液平衡）', page: 32, tags: '気液平衡 蒸気圧' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', problem: '必67（気体の溶解度）', page: 37, tags: '気体 溶解度' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', problem: '必71（浸透圧・モル濃度）', page: 38, tags: '浸透圧 溶液' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', problem: '準98（化学平衡の状態・ルシャトリエ）', page: 55, tags: '化学平衡 ルシャトリエ' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', problem: '問題131（酸化防止剤・ビタミンC滴定）', page: 75, tags: '酸化還元 滴定' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', problem: '必137・準138（直列電解・イオン交換膜法）', page: 78, tags: '電気分解 イオン交換膜' },
+      { fileName: '重要問題集vol.1.pdf', bookKey: 'jumon', problem: '問題141・142（FeS純度・鉛蓄電池とLi電池）', page: 80, tags: '電池 電気分解' },
+      { fileName: '重要問題集vol.2.pdf', bookKey: 'jumon', problem: '問題206（有機分離・エーテル抽出）', page: 122, tags: '有機 抽出' },
+      { fileName: '重要問題集vol.2.pdf', bookKey: 'jumon', problem: '準226（オゾン分解・アルケン構造決定）', page: 133, tags: '有機 オゾン分解 構造決定' },
+      { fileName: 'エクセル vol.1.pdf', bookKey: 'excel_chem', problem: '120（エタンの燃焼）', page: 96, tags: '気体 燃焼' },
+      { fileName: 'エクセル vol.1.pdf', bookKey: 'excel_chem', problem: '160（窒素の定量・ケルダール法）', page: 120, tags: '中和 逆滴定 ケルダール' },
+      { fileName: 'エクセル vol.1.pdf', bookKey: 'excel_chem', problem: '162・163（混合物の中和・電気伝導度滴定）', page: 121, tags: '中和 滴定' },
+      { fileName: 'エクセルvol.2.pdf', bookKey: 'excel_chem', problem: '201・203（ファラデー定数・並列電気分解）', page: 144, tags: '電気分解 電池' },
+      { fileName: 'エクセルvol.2.pdf', bookKey: 'excel_chem', problem: '212（アスコルビン酸の定量・ヨウ素滴定）', page: 148, tags: '酸化還元 ヨウ素滴定' },
+      { fileName: 'エクセルvol.2.pdf', bookKey: 'excel_chem', problem: '228・229（Cu2O結晶格子・有効数字）', page: 163, tags: '結晶格子 有効数字' },
+      { fileName: 'エクセルvol.3.pdf', bookKey: 'excel_chem', problem: '366（モール法）', page: 261, tags: '沈殿滴定 モール法' },
+      { fileName: 'エクセル 高分子.pdf', bookKey: 'excel_chem', problem: '575・576（シクロデキストリン・デンプン加水分解）', page: 421, tags: '高分子 糖類' },
+      { fileName: 'エクセル 高分子.pdf', bookKey: 'excel_chem', problem: '616・619・620（糖類メチル化・酵素・PET解重合）', page: 452, tags: '高分子 構造決定' }
+    ];
+
+    const CFG_KEY = 'tv_cfg_v2';
+    const TASKS_CACHE_KEY = 'tv_tasks_v2';
+    const DONE_KEY = 'tv_done_v2';
+    const IDB_NAME = 'TextbookPdfStoreV2';
+    const IDB_STORE = 'pdfs';
+
+    function loadJson(k, fb) {
+      try { const r = localStorage.getItem(k); if (r) return JSON.parse(r); } catch (e) {}
+      return fb;
     }
-    function saveJson(key, val) {
-      try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+    function saveJson(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
     }
 
-    let appState = loadJson(STORAGE_KEY, { srs: {} });
-    let customProblems = loadJson(CUSTOM_KEY, []);
+    let cfg = loadJson(CFG_KEY, { sheetUrl: '', offsets: {}, lastSync: '' });
+    let tasks = loadJson(TASKS_CACHE_KEY, DEFAULT_TASKS);
+    let doneMap = loadJson(DONE_KEY, {});
+    let memoryPdfs = {};
+    let savedKeys = new Set();
+    let searchFilterSubj = 'ALL';
+    let pendingOpen = null;
 
-    function getAllProblems() {
-      return [...DEFAULT_PROBLEMS, ...customProblems];
-    }
-
-    let activeSubj = 'ALL';
-    let deck = [];
-    let idx = 0;
-    let isFreeMode = false;
-    let timerInterval = null;
-    let timeLeft = 60.0;
-    let currentRubricHits = [];
-    let sessionLogs = [];
+    let vFileName = null;
+    let vNormKey = null;
+    let vPrintPage = 1;
+    let vScale = 1.25;
+    let vRendering = false;
 
     const el = (id) => document.getElementById(id);
-
-    function getSrsStage(pid) {
-      return (appState.srs[pid] && typeof appState.srs[pid].stage === 'number') ? appState.srs[pid].stage : 0;
-    }
-
-    function updateGradCount() {
-      const all = getAllProblems();
-      const grad = all.filter(p => getSrsStage(p.id) >= 3).length;
-      el('gradCount').textContent = grad;
-      el('totalProbCount').textContent = all.length;
-    }
 
     function showToast(msg) {
       const t = el('toast');
       t.textContent = msg;
       t.classList.remove('hidden');
-      setTimeout(() => t.classList.add('hidden'), 2400);
+      setTimeout(() => t.classList.add('hidden'), 2600);
     }
 
-    function normalize(str) {
-      return (str || '')
-        .replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
-        .replace(/[：]/g, ':').replace(/[＞]/g, '>').replace(/[＜]/g, '<')
-        .replace(/[＝]/g, '=').replace(/[−ー―]/g, '-').replace(/\s+/g, '').toLowerCase();
+    function openDb() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error('no idb')); return; }
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function idbPut(key, val) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(val, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    async function idbGet(key) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function idbDel(key) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    async function idbKeys() {
+      try {
+        const db = await openDb();
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).getAllKeys();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) { return []; }
     }
 
-    function stopTimer() {
-      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    function getOffset(nKey) { return parseInt(cfg.offsets?.[nKey] || 0, 10); }
+    function setOffset(nKey, val) {
+      if (!cfg.offsets) cfg.offsets = {};
+      cfg.offsets[nKey] = val;
+      saveJson(CFG_KEY, cfg);
     }
 
-    function startTimer() {
-      stopTimer();
-      const secs = parseInt(el('timerMode').value, 10);
-      if (!secs) {
-        el('timerText').textContent = '制限なし';
-        el('timerBar').style.width = '100%';
-        el('timerBar').className = 'timer-bar h-full bg-slate-300';
+    function isLoaded(fileName) {
+      const nk = normName(fileName);
+      return !!(memoryPdfs[nk] || savedKeys.has(nk));
+    }
+
+    function updateHeaderBadges() {
+      const loadedSet = new Set([...Object.keys(memoryPdfs), ...savedKeys]);
+      el('badgePdfCount').textContent = `PDF ${loadedSet.size}ファイル読込済`;
+      if (cfg.sheetUrl) {
+        el('badgeSync').textContent = cfg.lastSync ? `シート同期済 (${cfg.lastSync})` : 'シート接続済';
+        el('badgeSync').className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800';
+      } else {
+        el('badgeSync').textContent = '初期データ表示';
+        el('badgeSync').className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700';
+      }
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], cell = '', inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i], n = text[i + 1];
+        if (inQ) {
+          if (c === '"' && n === '"') { cell += '"'; i++; }
+          else if (c === '"') inQ = false;
+          else cell += c;
+        } else {
+          if (c === '"') inQ = true;
+          else if (c === ',') { row.push(cell); cell = ''; }
+          else if (c === '\r' && n === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; i++; }
+          else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+          else cell += c;
+        }
+      }
+      if (cell.length > 0 || row.length > 0) { row.push(cell); rows.push(row); }
+      return rows;
+    }
+
+    async function syncTasksFromSheet(silent = false) {
+      if (!cfg.sheetUrl) {
+        if (!silent) {
+          showToast('「PDF・同期設定」でCSV公開URLを設定してください');
+          switchNav('library');
+        }
         return;
       }
-      timeLeft = secs;
-      el('timerText').textContent = `${timeLeft.toFixed(1)}s`;
-      el('timerText').className = 'text-slate-700 tabular-nums';
-      el('timerBar').style.width = '100%';
-      el('timerBar').className = 'timer-bar h-full bg-slate-900';
-      timerInterval = setInterval(() => {
-        timeLeft = Math.max(0, timeLeft - 0.1);
-        el('timerText').textContent = `${timeLeft.toFixed(1)}s`;
-        el('timerBar').style.width = `${(timeLeft / secs) * 100}%`;
-        if (timeLeft <= 10) {
-          el('timerBar').className = 'timer-bar h-full bg-rose-600';
-          el('timerText').className = 'text-rose-600 font-bold tabular-nums';
+      if (!silent) showToast('今日のタスクを同期中...');
+      try {
+        const res = await fetch(cfg.sheetUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const rows = parseCSV(await res.text());
+        const parsed = [];
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || r.length < 7) continue;
+          const date = (r[0] || '').trim();
+          const slot = (r[1] || '【放課後】').trim();
+          const order = parseInt(r[2], 10) || i;
+          const subj = (r[3] || '').trim();
+          const bookKey = (r[4] || 'other').trim();
+          const bookName = (r[5] || '').trim();
+          const problem = (r[6] || '').trim();
+          const page = parseInt(r[7], 10) || null;
+          const criteria = (r[8] || '').trim();
+          const prio = (r[9] || 'A').trim();
+          const nb = (r[10] || NB_MAP[bookKey] || '').trim();
+          const rawFile = (r[11] || '').trim();
+          const meta = resolveFileMeta(rawFile, bookKey);
+          if (!bookName && !problem) continue;
+          parsed.push({ date, slot, order, subj, bookKey, bookName: bookName || meta.bookName, problem, page, criteria, prio, nb, fileName: meta.fileName });
         }
-        if (timeLeft <= 0) {
-          stopTimer();
-          showToast('制限時間到達：「方針を採点する」をタップ');
+        if (parsed.length > 0) {
+          tasks = parsed;
+          saveJson(TASKS_CACHE_KEY, tasks);
         }
-      }, 100);
-    }
-
-    function shuffle(arr) {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
+        cfg.lastSync = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        saveJson(CFG_KEY, cfg);
+        updateHeaderBadges();
+        renderTasks();
+        if (el('sheetSyncMsg')) el('sheetSyncMsg').textContent = `同期完了（${parsed.length}件・${cfg.lastSync}）`;
+        if (!silent) showToast(`今日のタスク ${parsed.length}件 を同期しました`);
+      } catch (e) {
+        if (el('sheetSyncMsg')) el('sheetSyncMsg').textContent = '同期失敗（公開URLとネット接続を確認）';
+        if (!silent) showToast('同期に失敗しました');
       }
-      return a;
     }
 
-    function startDeck(limit = null) {
-      const all = getAllProblems();
-      let pool = activeSubj === 'ALL' ? all : all.filter(p => p.subj === activeSubj);
-      if (pool.length === 0) pool = all;
-      const ungrad = shuffle(pool.filter(p => getSrsStage(p.id) < 3));
-      const grad = shuffle(pool.filter(p => getSrsStage(p.id) >= 3));
-      let ordered = [...ungrad, ...grad];
-      if (limit) ordered = ordered.slice(0, limit);
-      deck = ordered;
-      idx = 0;
-      sessionLogs = [];
-      el('completeCard').classList.add('hidden');
-      el('trainerCard').classList.remove('hidden');
-      renderProblem();
-    }
+    function renderTasks() {
+      const dateStr = tasks[0]?.date || '本日の計画';
+      el('taskDateLabel').textContent = `対象日：${dateStr}`;
+      const slots = ['【午前】', '【午後】', '【放課後】'];
+      const extraSlots = [...new Set(tasks.map(t => t.slot))].filter(s => !slots.includes(s));
+      const allSlots = [...slots, ...extraSlots];
 
-    function renderProblem() {
-      const p = deck[idx];
-      const stage = getSrsStage(p.id);
-      const srsInfo = SRS_STEPS[Math.min(stage, 3)];
-      el('pId').textContent = p.id;
-      el('pSubj').textContent = p.subj;
-      el('pSrs').textContent = srsInfo.label;
-      el('pSrs').className = `text-xs font-semibold px-2 py-0.5 rounded ${srsInfo.badge}`;
-      el('pProgress').textContent = `${idx + 1} / ${deck.length}`;
-      el('pSource').textContent = p.src;
-      el('pPrompt').textContent = p.prompt;
+      let doneCount = 0;
+      tasks.forEach((t, i) => { if (doneMap[`${t.date}_${i}_${t.problem}`]) doneCount++; });
+      el('taskDoneCount').textContent = `${doneCount} / ${tasks.length} 完了`;
 
-      el('inLaw').value = '';
-      el('inStep').value = '';
-      el('inTrap').value = '';
-      el('inFree').value = '';
-      el('inputArea').classList.remove('hidden');
-      el('resultPanel').classList.add('hidden');
-      startTimer();
-    }
-
-    function gradeCurrent() {
-      stopTimer();
-      const rawText = isFreeMode
-        ? el('inFree').value
-        : `${el('inLaw').value} ${el('inStep').value} ${el('inTrap').value}`;
-      const norm = normalize(rawText);
-      const p = deck[idx];
-
-      currentRubricHits = p.rubric.map(item => {
-        if (!norm) return false;
-        return item.keywords.some(kw => norm.includes(normalize(kw)));
-      });
-
-      el('modelAnswer').textContent = p.model;
-      el('modelIfThen').textContent = p.ifThen;
-      el('resultPanel').classList.remove('hidden');
-      renderRubricAndVerdict();
-    }
-
-    function computeScoreAndVerdict() {
-      const p = deck[idx];
-      let score = 0;
-      p.rubric.forEach((item, i) => { if (currentRubricHits[i]) score += item.weight; });
-      const curStage = getSrsStage(p.id);
-      let verdict, nextStage, cls;
-      if (score >= 80) {
-        nextStage = Math.min(3, curStage + 1);
-        verdict = nextStage >= 3 ? '【合格・卒業】方針が完全に定着' : '【合格】SRS間隔を前進';
-        cls = 'bg-emerald-50 border-emerald-200 text-emerald-900';
-      } else if (score >= 50) {
-        nextStage = curStage === 0 ? 1 : curStage;
-        verdict = '【惜しい（1行修正）】核心は掴めているが詰め不足';
-        cls = 'bg-amber-50 border-amber-200 text-amber-900';
-      } else {
-        nextStage = 0;
-        verdict = '【不合格（解き直しへ戻す）】方針の再構築が必要';
-        cls = 'bg-rose-50 border-rose-200 text-rose-900';
-      }
-      return { score, verdict, nextStage, cls };
-    }
-
-    function renderRubricAndVerdict() {
-      const p = deck[idx];
-      const { score, verdict, nextStage, cls } = computeScoreAndVerdict();
-      const nextSrs = SRS_STEPS[nextStage];
-
-      el('verdictBanner').className = `rounded-xl p-3.5 border flex flex-wrap items-center justify-between gap-2 ${cls}`;
-      el('verdictTitle').textContent = verdict;
-      el('verdictNextSrs').textContent = `次回ステータス：${nextSrs.label}`;
-      el('verdictScore').textContent = `${score} / 100点`;
-
-      el('rubricList').innerHTML = p.rubric.map((item, i) => {
-        const hit = currentRubricHits[i];
-        return `
-          <button type="button" data-ridx="${i}" class="rubric-toggle w-full text-left p-3 rounded-xl border flex items-start justify-between gap-3 transition ${hit ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
-            <div class="flex items-start gap-2.5">
-              <span class="shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center mt-0.5 ${hit ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}">${hit ? '○' : '×'}</span>
-              <span class="text-xs sm:text-sm font-medium leading-snug">${item.label}</span>
-            </div>
-            <span class="shrink-0 text-xs font-bold tabular-nums">${item.weight}点</span>
-          </button>
-        `;
-      }).join('');
-
-      document.querySelectorAll('.rubric-toggle').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const i = parseInt(btn.dataset.ridx, 10);
-          currentRubricHits[i] = !currentRubricHits[i];
-          renderRubricAndVerdict();
-        });
-      });
-    }
-
-    function confirmAndNext() {
-      const p = deck[idx];
-      const { score, verdict, nextStage } = computeScoreAndVerdict();
-      const nextSrs = SRS_STEPS[nextStage];
-      appState.srs[p.id] = { stage: nextStage, lastScore: score, updatedAt: new Date().toISOString().slice(0, 10) };
-      saveJson(STORAGE_KEY, appState);
-      updateGradCount();
-
-      sessionLogs.push({ id: p.id, subj: p.subj, score, verdict, nextLabel: nextSrs.label });
-      if (idx < deck.length - 1) { idx += 1; renderProblem(); }
-      else { showComplete(); }
-    }
-
-    function showComplete() {
-      stopTimer();
-      el('trainerCard').classList.add('hidden');
-      el('completeCard').classList.remove('hidden');
-      const passed = sessionLogs.filter(l => l.score >= 80).length;
-      el('summaryPass').textContent = `${passed} / ${sessionLogs.length}問 合格`;
-      el('sessionLogList').innerHTML = sessionLogs.map(l => `
-        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span class="font-mono font-bold text-slate-900 mr-2">${l.id}</span>
-            <span class="text-slate-600 mr-2">[${l.subj}]</span>
-            <span class="font-semibold text-slate-900">${l.score}点</span>
-          </div>
-          <span class="text-xs font-semibold text-indigo-800">${l.nextLabel}</span>
-        </div>
-      `).join('');
-    }
-
-    function renderManageList() {
-      const all = getAllProblems();
-      el('manageCount').textContent = all.length;
-      el('manageList').innerHTML = all.map(p => {
-        const isCustom = p.id.startsWith('MY-');
-        const st = SRS_STEPS[Math.min(getSrsStage(p.id), 3)];
-        return `
-          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-start justify-between gap-2">
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
-                <span class="text-[11px] font-mono font-bold text-slate-900">${p.id}</span>
-                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700">${p.subj}</span>
-                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded ${st.badge}">${st.label}</span>
+      let html = '';
+      allSlots.forEach(slot => {
+        const list = tasks.map((t, i) => ({ ...t, _idx: i })).filter(t => t.slot === slot);
+        if (list.length === 0) return;
+        html += `<div class="space-y-2.5"><div class="text-xs sm:text-sm font-bold text-slate-400 px-1">${slot}</div>`;
+        list.forEach(t => {
+          const dk = `${t.date}_${t._idx}_${t.problem}`;
+          const isDone = !!doneMap[dk];
+          const fname = t.fileName || resolveFileMeta('', t.bookKey).fileName;
+          const loaded = isLoaded(fname);
+          html += `
+            <div class="bg-slate-900 border ${isDone ? 'border-emerald-800/70 opacity-75' : 'border-slate-800'} rounded-2xl p-4 shadow-sm space-y-3">
+              <div class="flex items-start gap-3.5">
+                <input type="checkbox" data-dk="${encodeURIComponent(dk)}" ${isDone ? 'checked' : ''} class="task-chk mt-0.5 w-6 h-6 rounded-md border-slate-600 bg-slate-950 text-sky-500 focus:ring-sky-500">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                    <span class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-slate-800 text-sky-300 border border-slate-700">${t.subj || '学習'}</span>
+                    <span class="text-xs sm:text-sm font-bold text-slate-200">${t.bookName}</span>
+                    ${t.prio === 'A' ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-800">優先A</span>' : ''}
+                  </div>
+                  <div class="text-base font-bold text-white leading-snug ${isDone ? 'line-through text-slate-500' : ''}">${t.problem}</div>
+                  <div class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 break-all">
+                    <span>${fname}</span>
+                  </div>
+                  ${t.criteria ? `<div class="text-xs sm:text-sm text-slate-400 mt-1.5 leading-relaxed">${t.criteria}</div>` : ''}
+                </div>
               </div>
-              <div class="text-xs text-slate-700 truncate">${p.src}</div>
-            </div>
-            ${isCustom ? `<button type="button" data-del="${p.id}" class="del-btn shrink-0 text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1">削除</button>` : ''}
-          </div>
-        `;
-      }).join('');
+              ${(t.page || t.nb) ? `
+              <div class="flex items-center gap-2.5 pt-1">
+                ${t.page ? `<button type="button" data-open-file="${encodeURIComponent(fname)}" data-open-book="${t.bookKey}" data-open-page="${t.page}" data-open-label="${encodeURIComponent(t.problem)}" class="open-page-btn flex-1 py-3.5 px-4 rounded-xl ${loaded ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-sky-500 hover:bg-sky-400 text-slate-950'} text-sm sm:text-base font-bold active:scale-[0.98] transition shadow-md">p.${t.page} を開く</button>` : ''}
+                ${t.nb ? `<a href="${t.nb}" target="_blank" rel="noopener" class="shrink-0 px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-xs sm:text-sm font-bold hover:bg-slate-700 transition">Notebook ↗</a>` : ''}
+              </div>` : ''}
+            </div>`;
+        });
+        html += '</div>';
+      });
+      el('taskListContainer').innerHTML = html || '<div class="text-center text-sm text-slate-500 py-10">タスクがありません。</div>';
 
-      document.querySelectorAll('.del-btn').forEach(btn => {
+      document.querySelectorAll('.task-chk').forEach(chk => {
+        chk.addEventListener('change', () => {
+          doneMap[decodeURIComponent(chk.dataset.dk)] = chk.checked;
+          saveJson(DONE_KEY, doneMap);
+          renderTasks();
+        });
+      });
+      bindOpenPageButtons();
+    }
+
+    function initSearchControls() {
+      el('jumpFileSelect').innerHTML = PDF_FILES.map(f => `<option value="${encodeURIComponent(f.fileName)}" data-bk="${f.bookKey}">${f.fileName}（${f.note}）</option>`).join('');
+      const subjs = ['ALL', '数学', '物理', '化学', '地理', '英語'];
+      el('searchBookChips').innerHTML = subjs.map(s => `
+        <button type="button" data-sb="${s}" class="sb-chip px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition ${s === searchFilterSubj ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">${s === 'ALL' ? '全科目' : s}</button>
+      `).join('');
+      document.querySelectorAll('.sb-chip').forEach(btn => {
         btn.addEventListener('click', () => {
-          const delId = btn.dataset.del;
-          customProblems = customProblems.filter(x => x.id !== delId);
-          saveJson(CUSTOM_KEY, customProblems);
-          updateGradCount();
-          renderManageList();
-          showToast(`${delId} を削除しました`);
+          searchFilterSubj = btn.dataset.sb;
+          initSearchControls();
+          renderSearchResults();
         });
       });
     }
 
-    function addCustomProblem() {
-      const subj = el('addSubj').value;
-      const src = el('addSrc').value.trim();
-      const prompt = el('addPrompt').value.trim();
-      const kwRaw = el('addKeywords').value.trim();
-      const model = el('addModel').value.trim();
-      const ifThen = el('addIfThen').value.trim() || '【If】同パターンの設問を見たら → 【Then】模範方針のキーワードを即座に確認する';
+    function renderSearchResults() {
+      const kw = (el('searchInput').value || '').trim().toLowerCase();
+      const combined = [...BUILTIN_INDEX];
+      tasks.forEach(t => {
+        if (t.page && t.fileName && !combined.some(x => normName(x.fileName) === normName(t.fileName) && x.page === t.page && x.problem === t.problem)) {
+          combined.unshift({ fileName: t.fileName, bookKey: t.bookKey, problem: t.problem, page: t.page, tags: `${t.subj} 今日のタスク` });
+        }
+      });
 
-      if (!src || !prompt || !kwRaw || !model) {
-        showToast('教材・設問条件・キーワード・模範方針を入力してください');
+      const filtered = combined.filter(item => {
+        const meta = resolveFileMeta(item.fileName, item.bookKey);
+        if (searchFilterSubj !== 'ALL' && meta.subj !== searchFilterSubj) return false;
+        if (!kw) return true;
+        const hay = `${item.fileName} ${meta.bookName} ${meta.subj} ${meta.note} ${item.problem} p.${item.page} ${item.page} ${item.tags || ''}`.toLowerCase();
+        return kw.split(/\s+/).every(token => hay.includes(token));
+      });
+
+      if (filtered.length === 0) {
+        el('searchResults').innerHTML = '<div class="text-center text-xs sm:text-sm text-slate-500 py-8">該当する問題がありません。上の「ページ直接指定」から開けます。</div>';
         return;
       }
-      const kws = kwRaw.split(/[,、\s]+/).map(s => s.trim()).filter(Boolean);
-      const id = `MY-${String(customProblems.length + 1).padStart(3, '0')}`;
-      const chunkSize = Math.max(1, Math.ceil(kws.length / 2));
-      const g1 = kws.slice(0, chunkSize);
-      const g2 = kws.slice(chunkSize);
-      const rubric = g2.length > 0
-        ? [
-            { label: `核心キーワード（${g1.join(' / ')}）を盛り込む`, weight: 50, keywords: g1 },
-            { label: `立式・注意点（${g2.join(' / ')}）を盛り込む`, weight: 50, keywords: g2 }
-          ]
-        : [{ label: `核心キーワード（${g1.join(' / ')}）を盛り込む`, weight: 100, keywords: g1 }];
 
-      customProblems.push({ id, subj, src, prompt, rubric, model, ifThen });
-      saveJson(CUSTOM_KEY, customProblems);
-      el('addSrc').value = '';
-      el('addPrompt').value = '';
-      el('addKeywords').value = '';
-      el('addModel').value = '';
-      el('addIfThen').value = '';
-      updateGradCount();
-      renderManageList();
-      showToast(`${id} を追加しました`);
+      el('searchResults').innerHTML = filtered.slice(0, 45).map(item => {
+        const loaded = isLoaded(item.fileName);
+        return `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-sm flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-950 text-slate-300 border border-slate-800 break-all">${item.fileName}</span>
+                <span class="text-xs font-bold text-sky-400 tabular-nums">p.${item.page}</span>
+              </div>
+              <div class="text-sm font-bold text-white truncate">${item.problem}</div>
+            </div>
+            <button type="button" data-open-file="${encodeURIComponent(item.fileName)}" data-open-book="${item.bookKey}" data-open-page="${item.page}" data-open-label="${encodeURIComponent(item.problem)}" class="open-page-btn shrink-0 px-5 py-3 rounded-xl ${loaded ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-sky-500 hover:bg-sky-400 text-slate-950'} text-sm font-bold active:scale-95 transition">開く</button>
+          </div>
+        `;
+      }).join('');
+      bindOpenPageButtons();
     }
 
-    function copyText(text, label = 'コピーしました') {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(() => showToast(label)).catch(() => fallbackCopy(text, label));
-      } else {
-        fallbackCopy(text, label);
+    function renderLibrary() {
+      el('inSheetUrl').value = cfg.sheetUrl || '';
+      el('sheetSyncMsg').textContent = cfg.lastSync ? `最終同期：${cfg.lastSync}` : '';
+
+      el('libraryList').innerHTML = PDF_FILES.map(f => {
+        const nk = normName(f.fileName);
+        const mem = memoryPdfs[nk];
+        const isSaved = savedKeys.has(nk);
+        const off = getOffset(nk);
+        const offStr = off >= 0 ? `+${off}` : `${off}`;
+        const statusBadge = isSaved
+          ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">端末保存済</span>'
+          : (mem ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800">一時読込</span>' : '<span class="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-400">未読込</span>');
+        return `
+          <div class="p-3.5 rounded-2xl border border-slate-800 bg-slate-950 space-y-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-xs sm:text-sm font-mono font-bold text-white break-all">${f.fileName}</span>
+                  ${statusBadge}
+                </div>
+                <div class="text-xs text-slate-400 mt-0.5">${f.bookName}（${f.note}）</div>
+              </div>
+              <div class="shrink-0 flex items-center gap-1.5 text-xs">
+                <button type="button" data-off-nk="${encodeURIComponent(nk)}" data-off-delta="-1" class="off-btn px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-white font-bold hover:bg-slate-700">-1</button>
+                <span class="w-8 text-center font-bold tabular-nums text-sky-400">${offStr}</span>
+                <button type="button" data-off-nk="${encodeURIComponent(nk)}" data-off-delta="1" class="off-btn px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-white font-bold hover:bg-slate-700">+1</button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-pick-file="${encodeURIComponent(f.fileName)}" data-pick-book="${f.bookKey}" class="pick-pdf-btn flex-1 py-2.5 px-4 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm font-bold hover:bg-slate-700 active:scale-[0.98]">${mem || isSaved ? 'PDF差し替え' : 'PDFを選択'}</button>
+              ${(mem || isSaved) ? `<button type="button" data-open-file="${encodeURIComponent(f.fileName)}" data-open-book="${f.bookKey}" data-open-page="1" data-open-label="${encodeURIComponent(f.fileName)}" class="open-page-btn px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs sm:text-sm font-bold hover:bg-indigo-500">開く</button>` : ''}
+              ${isSaved ? `<button type="button" data-clear-nk="${encodeURIComponent(nk)}" class="clear-pdf-btn px-3 py-2.5 rounded-xl text-rose-400 text-xs font-bold hover:bg-rose-950/60">削除</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.off-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const nk = decodeURIComponent(btn.dataset.offNk);
+          setOffset(nk, getOffset(nk) + parseInt(btn.dataset.offDelta, 10));
+          renderLibrary();
+        });
+      });
+      document.querySelectorAll('.pick-pdf-btn').forEach(btn => {
+        btn.addEventListener('click', () => triggerSinglePick(decodeURIComponent(btn.dataset.pickFile), btn.dataset.pickBook, null, null));
+      });
+      document.querySelectorAll('.clear-pdf-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const nk = decodeURIComponent(btn.dataset.clearNk);
+          await idbDel(nk);
+          savedKeys.delete(nk);
+          delete memoryPdfs[nk];
+          updateHeaderBadges();
+          renderLibrary();
+          showToast('端末キャッシュを削除しました');
+        });
+      });
+      bindOpenPageButtons();
+    }
+
+    function bindOpenPageButtons() {
+      document.querySelectorAll('.open-page-btn').forEach(btn => {
+        btn.onclick = () => {
+          const fname = decodeURIComponent(btn.dataset.openFile || '');
+          const bk = btn.dataset.openBook || 'other';
+          const pg = parseInt(btn.dataset.openPage, 10) || 1;
+          const lbl = decodeURIComponent(btn.dataset.openLabel || '');
+          openFileAtPage(fname, bk, pg, lbl);
+        };
+      });
+    }
+
+    async function storeLoadedPdf(targetFileName, file) {
+      const nk = normName(targetFileName);
+      const buf = await file.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+      memoryPdfs[nk] = { fileName: targetFileName, size: file.size, pdfDoc };
+      if (file.size <= 120 * 1024 * 1024) {
+        try {
+          await idbPut(nk, { fileName: targetFileName, size: file.size, buffer: buf });
+          savedKeys.add(nk);
+        } catch (e) {}
       }
+      return pdfDoc;
     }
 
-    function fallbackCopy(text, label) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); showToast(label); } catch (e) {}
-      document.body.removeChild(ta);
+    function triggerSinglePick(fileName, bookKey, jumpPage, label) {
+      pendingOpen = { fileName, bookKey, printPage: jumpPage, label };
+      el('hiddenSinglePdf').value = '';
+      el('hiddenSinglePdf').click();
     }
 
-    function buildSyncText() {
-      const logs = sessionLogs.length > 0 ? sessionLogs : Object.entries(appState.srs).map(([id, v]) => ({
-        id, score: v.lastScore, nextLabel: SRS_STEPS[Math.min(v.stage, 3)].label
-      }));
-      if (logs.length === 0) return 'まだ採点ログがありません。';
-      const lines = ['【30秒方針チェック採点結果（シート反映用）】'];
-      logs.forEach(l => lines.push(`- ${l.id}: ${l.score}点 → ${l.nextLabel}`));
-      return lines.join('\n');
+    el('hiddenSinglePdf').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file || !pendingOpen) return;
+      const { fileName, printPage, label } = pendingOpen;
+      showToast(`${file.name} を読み込み中...`);
+      try {
+        await storeLoadedPdf(fileName, file);
+        updateHeaderBadges();
+        renderTasks();
+        if (!el('viewLibrary').classList.contains('hidden')) renderLibrary();
+        el('missingPdfModal').classList.add('hidden');
+        if (printPage) await launchPdfViewer(fileName, printPage, label);
+        else showToast(`${fileName} を読み込みました`);
+      } catch (err) {
+        showToast('PDFの読み込みに失敗しました');
+      }
+    });
+
+    el('btnBatchPick').addEventListener('click', () => {
+      el('hiddenBatchPdf').value = '';
+      el('hiddenBatchPdf').click();
+    });
+
+    el('hiddenBatchPdf').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+      let matched = 0;
+      showToast(`${files.length}件のPDFを自動紐付け中...`);
+      for (const file of files) {
+        const meta = FILE_BY_NORM[normName(file.name)];
+        if (meta) {
+          try {
+            await storeLoadedPdf(meta.fileName, file);
+            matched++;
+          } catch (err) {}
+        }
+      }
+      updateHeaderBadges();
+      renderTasks();
+      renderLibrary();
+      showToast(`${matched} / ${files.length}件をファイル名で自動紐付けしました`);
+    });
+
+    async function ensurePdfLoaded(fileName) {
+      const nk = normName(fileName);
+      if (memoryPdfs[nk]?.pdfDoc) return memoryPdfs[nk].pdfDoc;
+      if (savedKeys.has(nk)) {
+        const rec = await idbGet(nk);
+        if (rec?.buffer) {
+          const pdfDoc = await pdfjsLib.getDocument({ data: rec.buffer.slice(0) }).promise;
+          memoryPdfs[nk] = { fileName, size: rec.size, pdfDoc };
+          return pdfDoc;
+        }
+      }
+      return null;
+    }
+
+    async function openFileAtPage(fileName, bookKey, printPage, label) {
+      const pdfDoc = await ensurePdfLoaded(fileName);
+      if (!pdfDoc) {
+        pendingOpen = { fileName, bookKey, printPage, label };
+        el('missingPdfTitle').textContent = `${label || fileName}（p.${printPage}）`;
+        el('missingPdfFileBox').textContent = `対象ファイル名：${fileName}`;
+        const nb = NB_MAP[bookKey] || '';
+        const nbLink = el('linkMissingNotebook');
+        if (nb) { nbLink.href = nb; nbLink.classList.remove('hidden'); }
+        else { nbLink.classList.add('hidden'); }
+        el('missingPdfModal').classList.remove('hidden');
+        return;
+      }
+      await launchPdfViewer(fileName, printPage, label);
+    }
+
+    async function launchPdfViewer(fileName, printPage, label) {
+      vFileName = fileName;
+      vNormKey = normName(fileName);
+      vPrintPage = Math.max(1, printPage);
+      el('viewerBookTitle').textContent = fileName;
+      el('viewerSubTitle').textContent = label || '';
+      el('pdfViewerModal').classList.remove('hidden');
+      await renderCurrentPdfPage();
+    }
+
+    async function renderCurrentPdfPage() {
+      if (vRendering || !vNormKey) return;
+      const pdfDoc = memoryPdfs[vNormKey]?.pdfDoc;
+      if (!pdfDoc) return;
+      vRendering = true;
+      el('pdfLoadingMsg').classList.remove('hidden');
+      try {
+        const off = getOffset(vNormKey);
+        const realPage = Math.max(1, Math.min(pdfDoc.numPages, vPrintPage + off));
+        el('viewerPageInput').value = vPrintPage;
+        el('viewerPdfRealPage').textContent = `(PDF ${realPage}/${pdfDoc.numPages})`;
+        el('viewerOffsetVal').textContent = off >= 0 ? `+${off}` : `${off}`;
+
+        const page = await pdfDoc.getPage(realPage);
+        const containerW = Math.max(300, el('pdfCanvasWrap').clientWidth - 20);
+        const baseViewport = page.getViewport({ scale: 1.0 });
+        const fitScale = (containerW / baseViewport.width) * (vScale / 1.25);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        const viewport = page.getViewport({ scale: fitScale * dpr });
+
+        const canvas = el('pdfCanvas');
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
+        canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
+
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        el('pdfCanvasWrap').scrollTop = 0;
+      } catch (e) {
+        showToast('ページ描画エラー');
+      } finally {
+        el('pdfLoadingMsg').classList.add('hidden');
+        vRendering = false;
+      }
     }
 
     function switchNav(target) {
-      stopTimer();
       const map = {
-        trainer: ['navTrainer', 'viewTrainer'],
-        manage: ['navManage', 'viewManage'],
-        install: ['navInstall', 'viewInstall']
+        tasks: ['navTasks', 'viewTasks'],
+        search: ['navSearch', 'viewSearch'],
+        library: ['navLibrary', 'viewLibrary']
       };
       Object.entries(map).forEach(([k, [nid, vid]]) => {
         const active = k === target;
         el(vid).classList.toggle('hidden', !active);
         el(nid).className = active
-          ? 'py-3 flex flex-col items-center justify-center text-xs font-bold text-slate-900 border-t-2 border-slate-900'
-          : 'py-3 flex flex-col items-center justify-center text-xs font-medium text-slate-500 border-t-2 border-transparent hover:text-slate-800';
+          ? 'py-4 text-sm font-bold text-sky-400 border-t-2 border-sky-400'
+          : 'py-4 text-sm font-medium text-slate-400 border-t-2 border-transparent hover:text-slate-200';
       });
-      if (target === 'manage') renderManageList();
-      if (target === 'trainer' && el('resultPanel').classList.contains('hidden') && el('completeCard').classList.contains('hidden')) startTimer();
+      if (target === 'search') renderSearchResults();
+      if (target === 'library') renderLibrary();
     }
 
-    // Event bindings
-    el('navTrainer').addEventListener('click', () => switchNav('trainer'));
-    el('navManage').addEventListener('click', () => switchNav('manage'));
-    el('navInstall').addEventListener('click', () => switchNav('install'));
-
-    document.querySelectorAll('.subj-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        activeSubj = btn.dataset.subj;
-        document.querySelectorAll('.subj-btn').forEach(b => {
-          b.className = b.dataset.subj === activeSubj
-            ? 'subj-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900 text-white'
-            : 'subj-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
-        });
-        startDeck();
-      });
+    el('navTasks').addEventListener('click', () => switchNav('tasks'));
+    el('navSearch').addEventListener('click', () => switchNav('search'));
+    el('navLibrary').addEventListener('click', () => switchNav('library'));
+    el('btnHeaderSync').addEventListener('click', () => syncTasksFromSheet(false));
+    el('btnSaveSheetUrl').addEventListener('click', () => {
+      cfg.sheetUrl = el('inSheetUrl').value.trim();
+      saveJson(CFG_KEY, cfg);
+      updateHeaderBadges();
+      syncTasksFromSheet(false);
     });
-
-    document.querySelectorAll('.quick-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const n = parseInt(btn.dataset.quick, 10);
-        startDeck(n);
-        showToast(`${n}問のスキマ即出しセットを開始`);
-      });
+    el('searchInput').addEventListener('input', () => renderSearchResults());
+    el('btnDirectJump').addEventListener('click', () => {
+      const opt = el('jumpFileSelect').selectedOptions[0];
+      const fname = decodeURIComponent(opt.value);
+      const bk = opt.dataset.bk || 'other';
+      const pg = parseInt(el('jumpPageInput').value, 10) || 1;
+      openFileAtPage(fname, bk, pg, `${fname} p.${pg}`);
     });
-
-    el('btnToggleMode').addEventListener('click', () => {
-      isFreeMode = !isFreeMode;
-      el('structuredInputs').classList.toggle('hidden', isFreeMode);
-      el('freeInput').classList.toggle('hidden', !isFreeMode);
-      el('btnToggleMode').textContent = isFreeMode ? '3欄（法則・順序・罠）へ戻す' : '1欄フリー記述へ切替';
+    el('btnPickMissingPdf').addEventListener('click', () => {
+      if (pendingOpen) triggerSinglePick(pendingOpen.fileName, pendingOpen.bookKey, pendingOpen.printPage, pendingOpen.label);
     });
+    el('btnCloseMissing').addEventListener('click', () => el('missingPdfModal').classList.add('hidden'));
 
-    el('timerMode').addEventListener('change', () => {
-      if (el('resultPanel').classList.contains('hidden')) startTimer();
+    el('btnCloseViewer').addEventListener('click', () => el('pdfViewerModal').classList.add('hidden'));
+    el('btnPrevPage').addEventListener('click', () => { if (vPrintPage > 1) { vPrintPage -= 1; renderCurrentPdfPage(); } });
+    el('btnNextPage').addEventListener('click', () => { vPrintPage += 1; renderCurrentPdfPage(); });
+    el('viewerPageInput').addEventListener('change', () => {
+      const p = parseInt(el('viewerPageInput').value, 10);
+      if (p >= 1) { vPrintPage = p; renderCurrentPdfPage(); }
     });
+    el('btnZoomIn').addEventListener('click', () => { vScale = Math.min(2.5, vScale + 0.25); renderCurrentPdfPage(); });
+    el('btnZoomOut').addEventListener('click', () => { vScale = Math.max(0.75, vScale - 0.25); renderCurrentPdfPage(); });
+    el('btnOffsetMinus').addEventListener('click', () => { setOffset(vNormKey, getOffset(vNormKey) - 1); renderCurrentPdfPage(); });
+    el('btnOffsetPlus').addEventListener('click', () => { setOffset(vNormKey, getOffset(vNormKey) + 1); renderCurrentPdfPage(); });
 
-    el('btnGrade').addEventListener('click', () => gradeCurrent());
-    el('btnSkip').addEventListener('click', () => {
-      if (idx < deck.length - 1) { idx += 1; renderProblem(); }
-      else { showComplete(); }
-    });
-    el('btnConfirmNext').addEventListener('click', () => confirmAndNext());
-    el('btnCopyLog').addEventListener('click', () => copyText(buildSyncText(), '採点ログをコピーしました'));
-    el('btnCopySummary').addEventListener('click', () => copyText(buildSyncText(), 'シート同期用ログをコピーしました'));
-    el('btnNewSet').addEventListener('click', () => startDeck());
-    el('btnAddProblem').addEventListener('click', () => addCustomProblem());
-    el('btnExportJson').addEventListener('click', () => copyText(JSON.stringify({ srs: appState.srs, custom: customProblems }, null, 2), 'バックアップJSONをコピーしました'));
-
-    // Init
-    updateGradCount();
-    startDeck();
+    (async () => {
+      const keys = await idbKeys();
+      keys.forEach(k => savedKeys.add(k));
+      updateHeaderBadges();
+      initSearchControls();
+      renderTasks();
+      if (cfg.sheetUrl) syncTasksFromSheet(true);
+    })();
   </script>
   <script>
     if ('serviceWorker' in navigator) {

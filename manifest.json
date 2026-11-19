@@ -1,6 +1,6 @@
 {
-  "name": "30秒方針チェック・記述採点トレーナー",
-  "short_name": "30秒方針",
+  "name": "教材ページ直飛び＆今日のタスク",
+  "short_name": "教材ページ",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f8fafc",
